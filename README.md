@@ -105,5 +105,7 @@ PyTorch-ENet is compatible with torch1.4.0
 Time cost: 9.06177806854248 s
 ```
 
+## License
 
+PCREQ is licensed under the GNU Affero General Public License v3.0. See [LICENSE.txt](./LICENSE.txt) for details.
 
