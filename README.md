@@ -105,6 +105,20 @@ PyTorch-ENet is compatible with torch1.4.0
 Time cost: 9.06177806854248 s
 ```
 
+## Citation
+
+If PCREQ supports your research or development work, please cite the following publication.
+
+```
+@article{PCREQ_TOSEM2026,
+  author={Lei, Huashan and Xiao, Guanping and Liu, Yepang and Zheng, Zheng},
+  journal={ACM Transactions on Software Engineering and Methodology},
+  title={PCREQ: Automated Inference of Compatible Requirements for Python Third-party Library Upgrades},
+  year={2026},
+  doi={10.1145/3806394}
+}
+```
+
 ## License
 
 PCREQ is licensed under the GNU Affero General Public License v3.0. See [LICENSE.txt](./LICENSE.txt) for details.
