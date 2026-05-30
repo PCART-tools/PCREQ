@@ -4,7 +4,7 @@
 PCREQ is an automated tool for inferring compatible requirements for Python third-party library (TPL) upgrades. It is the first to achieve a fully automated process (end-to-end) that includes `knowledge acquisition`, `version compatibility assessment`, `invoked APIs and modules extraction`, `code compatibility assessment`, and `missing TPL completion`. PCREQ specializes in generating a compatible `requirements.txt` when upgrading a target TPL through a comprehensive analysis of both version and code compatibility issues.
 
 
-For PCREQ's design and implementation details, please refer to our [paper](https://arxiv.org/abs/2508.02023).
+For PCREQ's design and implementation details, please refer to our [paper](https://doi.org/10.1145/3806394).
 
 ## Evaluation
 [REQBench](https://github.com/PCART-tools/REQBench) Benchmark for Python Third-Party Libraries Upgrade.
