@@ -56,20 +56,20 @@ tar -xzvf *.tar.gz -C .
 
 **Run Command**
 ```shell
-python knowledge_acquisition.py -config config.json
+python knowledge_acquisition.py --config config.json
 ```
 
 ### Step 3: Compatible Upgraded requirements.txt Generation
 **Run Command**
 ```shell
-python main.py -config config.json
+python main.py --config config.json
 ```
 
 
 ## Usage Example
 ```shell
-python knowledge_acquisition.py -config config.json
-python main.py -config config.json
+python knowledge_acquisition.py --config config.json
+python main.py --config config.json
 ```
 
 ### Output
