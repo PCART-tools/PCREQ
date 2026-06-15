@@ -92,7 +92,10 @@ def download_from_data(package, package_version):
     url2 = 'https://pypi.org/pypi/' + package + '/' + package_version +'/json'
     path = constraint_path_prefix + package + '/' + package + package_version
     if not os.path.exists(path):
-        os.makedirs(path)
+        try:
+            os.makedirs(path)
+        except OSError:
+            return
     download_json(url2, path + '/' + package + '.json')
 
 def remove_elements_with_extra(lst):
@@ -263,7 +266,7 @@ def get_packname_and_cons_from_setup(librarypath):
 def get_library_constraint_from_metadata(pkg, version, python_version):
     res = {}
     #从setup.py中提取依赖
-    library_path = f"library_path_prefix{pkg}/{pkg}{version}/{pkg}"
+    library_path = f"{library_path_prefix}{pkg}/{pkg}{version}/{pkg}"
     if not os.path.exists(library_path):
         pass
     else:
@@ -276,7 +279,7 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
                 res[i[0]] = None
     #print(res)
     #从metadata中提取依赖
-    metadata_path = f"library_path_prefix{pkg}/{pkg}{version}/{pkg}-{version}.dist-info/METADATA"
+    metadata_path = f"{library_path_prefix}{pkg}/{pkg}{version}/{pkg}-{version}.dist-info/METADATA"
     if not os.path.exists(metadata_path):
         try:
             with open(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json', 'r') as file:
