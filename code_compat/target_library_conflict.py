@@ -341,6 +341,7 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                 else:
                     s = []
             #建立proj-torchvision-torch调用图
+            entry_path = None
             ls = ""
             for name in s:
                 ls += name
@@ -363,12 +364,13 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                     result = '/'.join(split_path[:-2])
                     partc = [result, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + ".json", "--entry-functions", ls]
                 cfmain(sys_argv=partc, if_add_package_name = True)
-        try:
-            with open(entry_path, 'r') as file:
-                apis_full_name = json.load(file)
-        except (json.JSONDecodeError, FileNotFoundError):
-            apis_full_name = set()
-            
+        apis_full_name = set()
+        if entry_path:
+            try:
+                with open(entry_path, 'r') as file:
+                    apis_full_name = json.load(file)
+            except (json.JSONDecodeError, FileNotFoundError):
+                pass
             try:
                 api_to_examine = _safe_load_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-entry.json')
             except (json.JSONDecodeError, FileNotFoundError):

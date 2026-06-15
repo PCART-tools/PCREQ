@@ -86,9 +86,12 @@ def finalize_and_save_requirements(target_proj_dependency, sub_graph, compatibil
     #print(target_proj_dependency)
     tmp = get_new_lib(clean_deps, python_version)
     all_packages = set(sub_graph) | set(tmp)
-    end_available_versions = {
-        pkg: [clean_deps[pkg]] if pkg in clean_deps else tmp[pkg] for pkg in all_packages
-    }
+    end_available_versions = {}
+    for pkg in all_packages:
+        if pkg in clean_deps:
+            end_available_versions[pkg] = [clean_deps[pkg]]
+        elif pkg in tmp:
+            end_available_versions[pkg] = tmp[pkg]
 
     end_compatibility_dict = get_compatibility_dict(end_available_versions, python_version)
     end_res = solving_constraints(end_compatibility_dict, end_available_versions)
@@ -109,18 +112,17 @@ def run_upgrade_process(config, options):
     target_project, target_library, target_version = prepare_environment(config)
     python_version = config["pythonVersion"]
     start_requirements_path = config["requirementsPath"]
-    knowledge_path = config["knowledgePath"]
+    knowledge_path = config["knowledgePath"].rstrip("/")
 
-    library_path_prefix = f"{knowledge_path}libraries/"
-    version_path_prefix = f"{knowledge_path}"
-    setup_path(library_path_prefix, f"{knowledge_path}version_constraint/", version_path_prefix, f"{knowledge_path}library_api/")
+    library_path_prefix = f"{knowledge_path}/libraries/"
+    version_path_prefix = knowledge_path
+    setup_path(library_path_prefix, f"{knowledge_path}/version_constraint/", version_path_prefix, f"{knowledge_path}/library_api/")
     target_library_call_module = get_library_call_module(target_library)
 
     start_proj_dependency = get_proj_dependency_from_requirements(start_requirements_path)
     start_library_path = get_library_paths(library_path_prefix, target_library, config['startVersion'], target_library_call_module)
     target_library_path = get_library_paths(library_path_prefix, target_library, target_version, target_library_call_module)
 
-    cleanup_temp_files()
 
     logging.info(f"*************Upgrade {target_library} from {config['startVersion']} to {target_version} in {target_project}*************")
 
@@ -159,7 +161,7 @@ def run_upgrade_process(config, options):
 
     finalize_and_save_requirements(
         target_proj_dependency, sub_graph, compatibility_info,
-        target_library, config['startVersion'], new_target_version,
+        target_library, config['startVersion'], target_version,
         python_version, config['projPath'], target_project
     )
 
@@ -168,7 +170,6 @@ if __name__ == '__main__':
     args = parse_arguments()
     config = load_config(args.config)
     run_upgrade_process(config, args.options)
-    cleanup_temp_files()
     end = time.time()
     logging.info("*************New requirements.txt has been generated!*************")
     logging.info(f"Time cost: {end - start} s")

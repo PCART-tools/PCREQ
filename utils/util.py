@@ -361,10 +361,6 @@ def update_project_dependencies(target_proj_dependency, res):
             target_proj_dependency[pkg] = ver
     return target_proj_dependency
 
-def cleanup_temp_files():
-    if os.path.exists("./extraction/tmp.json"):
-        os.remove("./extraction/tmp.json")
-
 def get_library_paths(library_path_prefix, target_library, version, call_module):
     return f"{library_path_prefix}{target_library}/{target_library}{version}/{call_module}"
 
