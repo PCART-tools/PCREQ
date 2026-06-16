@@ -113,15 +113,16 @@ def get_compatibility_dict(available_versions, python_version):
             else:
                 for l in constraint:
                     #print(f"{library}-{version}, {l}, {constraint[l]}")
-                    if l in available_versions.keys() and python_version in version_ls.get(l, {}):                        
+                    if l in available_versions.keys() and python_version in version_ls.get(l, {}):
+                        vls_vers = set(str(parse_version(v)) for v in version_ls[l][python_version])
+                        av_vers = set(available_versions[l])
+                        all_vers = av_vers | vls_vers
                         if constraint[l] is not None and constraint[l] != "none":
-                            for v in version_ls[l][python_version]:
+                            for v in all_vers:
                                 if is_version_compat(v, constraint[l]):
                                     a.append(l+'#'+str(parse_version(v)))
                         else:
-                            #a[l] = version_ls[l][python_version]
-                            for v in version_ls[l][python_version]:
-                                #if l in available_versions.keys() and v in available_versions[l]:
+                            for v in all_vers:
                                 a.append(l+'#'+str(parse_version(v)))
                                     
                 res[version] = a
