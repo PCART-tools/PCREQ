@@ -187,6 +187,16 @@ def remove_redundant_dependencies(end_target_proj_dependency, target_library, st
                         flag = True
                         break
             if not flag:
+                # Check if any other solved package still needs this dependency
+                for dep_pkg, dep_ver in end_target_proj_dependency.items():
+                    if dep_pkg == target_library:
+                        continue
+                    dep_cons = get_library_constraint_from_metadata(
+                        dep_pkg, dep_ver, python_version)
+                    if library in dep_cons:
+                        flag = True
+                        break
+            if not flag:
                 redundant_dependencies.append(library)
     for library in end_target_proj_dependency:
         if library not in redundant_dependencies:
