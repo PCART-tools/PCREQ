@@ -273,10 +273,11 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
         s = get_packname_and_cons_from_setup(library_path)
         #print(s)
         for i in s:
+            key = re.sub(r'\[.*\]', '', i[0]).lower()
             if len(i) == 2:
-                res[i[0]] = i[1].replace("-", ".")
+                res[key] = i[1].replace("-", ".")
             else:
-                res[i[0]] = None
+                res[key] = None
     #print(res)
     #从metadata中提取依赖
     metadata_path = f"{library_path_prefix}{pkg}/{pkg}{version}/{pkg}-{version}.dist-info/METADATA"
@@ -344,7 +345,8 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
         #print(new_requires_dist)
         for i in new_requires_dist:
             try:
-                res[i[0]] = i[1].replace("-", ".")
+                key = re.sub(r'\[.*\]', '', i[0]).lower()
+                res[key] = i[1].replace("-", ".")
             except:
                 res[i[0]] = None
             #res.append(i)  
