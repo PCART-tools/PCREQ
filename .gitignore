@@ -15,5 +15,5 @@ test.py
 test3.py
 main-origin.py
 run.py
-log*.txt
 *.swp
+data/call_graph/
