@@ -1,0 +1,7 @@
+2026-06-17 16:24:44,686 - INFO - *************Upgrade transformers from 2.5.1 to 3.0.0 in Bert-Multi-Label-Text-Classification*************
+2026-06-17 16:24:44,686 - INFO - Checking Bert-Multi-Label-Text-Classification is compatible with transformers3.0.0?...
+2026-06-17 16:24:47,945 - INFO - Bert-Multi-Label-Text-Classification is compatible with transformers3.0.0
+2026-06-17 16:25:38,772 - INFO - Checking transformers3.0.0 is compatible with tokenizers0.8.0rc4?...
+2026-06-17 16:25:46,034 - INFO - transformers3.0.0 is not compatible with tokenizers0.8.0rc4-The tokenizers.Encoding is deprecated.
+2026-06-17 16:25:50,045 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:25:50,046 - INFO - Time cost: 65.36441421508789 s

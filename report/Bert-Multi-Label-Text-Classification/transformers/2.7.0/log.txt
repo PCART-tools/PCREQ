@@ -1,0 +1,5 @@
+2026-06-17 16:24:44,655 - INFO - *************Upgrade transformers from 2.5.1 to 2.7.0 in Bert-Multi-Label-Text-Classification*************
+2026-06-17 16:24:44,655 - INFO - Checking Bert-Multi-Label-Text-Classification is compatible with transformers2.7.0?...
+2026-06-17 16:24:47,944 - INFO - Bert-Multi-Label-Text-Classification is compatible with transformers2.7.0
+2026-06-17 16:30:08,153 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:30:08,154 - INFO - Time cost: 323.50486040115356 s

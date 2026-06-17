@@ -1,0 +1,29 @@
+2026-06-17 17:01:45,385 - INFO - *************Upgrade tensorflow from 1.5.0 to 2.1.2 in deep-belief-network*************
+2026-06-17 17:01:45,386 - INFO - Checking deep-belief-network is compatible with tensorflow2.1.2?...
+2026-06-17 17:02:10,424 - INFO - deep-belief-network is not compatible with tensorflow2.1.2-The tensorflow.python.ops.variables.Variable.__init__ is deprecated.
+2026-06-17 17:02:10,467 - INFO - deep-belief-network is not compatible with tensorflow-2.1.2, change to tensorflow-2.1.1
+2026-06-17 17:02:10,468 - INFO - Checking deep-belief-network is compatible with tensorflow2.1.1?...
+2026-06-17 17:02:37,373 - INFO - deep-belief-network is not compatible with tensorflow2.1.1-The tensorflow.python.ops.variables.Variable.__init__ is deprecated.
+2026-06-17 17:02:37,407 - INFO - deep-belief-network is not compatible with tensorflow-2.1.1, change to tensorflow-2.1.0
+2026-06-17 17:02:37,407 - INFO - Checking deep-belief-network is compatible with tensorflow2.1.0?...
+2026-06-17 17:03:00,106 - INFO - deep-belief-network is not compatible with tensorflow2.1.0-The tensorflow.python.ops.variables.Variable.__init__ is deprecated.
+2026-06-17 17:03:00,136 - INFO - deep-belief-network is not compatible with tensorflow-2.1.0, change to tensorflow-2.0.4
+2026-06-17 17:03:00,137 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.4?...
+2026-06-17 17:03:16,423 - INFO - deep-belief-network is not compatible with tensorflow2.0.4-The tensorflow.python.ops.variables.Variable.__init__ is deprecated.
+2026-06-17 17:03:16,446 - INFO - deep-belief-network is not compatible with tensorflow-2.0.4, change to tensorflow-2.0.3
+2026-06-17 17:03:16,447 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.3?...
+2026-06-17 17:03:32,220 - INFO - deep-belief-network is not compatible with tensorflow2.0.3-The tensorflow.python.ops.variables.Variable.__init__ is deprecated.
+2026-06-17 17:03:32,248 - INFO - deep-belief-network is not compatible with tensorflow-2.0.3, change to tensorflow-2.0.2
+2026-06-17 17:03:32,248 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.2?...
+2026-06-17 17:03:47,866 - INFO - deep-belief-network is not compatible with tensorflow2.0.2-The tensorflow.python.ops.variables.Variable.__init__ is deprecated.
+2026-06-17 17:03:47,896 - INFO - deep-belief-network is not compatible with tensorflow-2.0.2, change to tensorflow-2.0.1
+2026-06-17 17:03:47,896 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.1?...
+2026-06-17 17:04:02,800 - INFO - deep-belief-network is not compatible with tensorflow2.0.1-The tensorflow.python.ops.variables.Variable.__init__ is deprecated.
+2026-06-17 17:04:02,821 - INFO - deep-belief-network is not compatible with tensorflow-2.0.1, change to tensorflow-2.0.0
+2026-06-17 17:04:02,821 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.0?...
+2026-06-17 17:04:17,650 - INFO - deep-belief-network is not compatible with tensorflow2.0.0-The tensorflow.python.ops.variables.Variable.__init__ is deprecated.
+2026-06-17 17:04:17,674 - INFO - deep-belief-network is not compatible with tensorflow-2.0.0, change to tensorflow-1.15.5
+2026-06-17 17:04:17,675 - INFO - Checking deep-belief-network is compatible with tensorflow1.15.5?...
+2026-06-17 17:04:31,649 - INFO - deep-belief-network is compatible with tensorflow1.15.5
+2026-06-17 17:04:40,001 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:04:40,001 - INFO - Time cost: 174.61733984947205 s

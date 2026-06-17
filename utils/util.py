@@ -330,7 +330,7 @@ def setup_logging(log_filename):
 
 def save_dict_to_file(d, filename='output.txt'):
     # 格式化字典
-    formatted_output = '\n'.join([f"{key}=={value}" for key, value in d.items()])
+    formatted_output = '\n'.join([f"{key}=={value}" for key, value in sorted(d.items())])
     
     # 将格式化后的内容写入文件
     with open(filename, 'w') as file:

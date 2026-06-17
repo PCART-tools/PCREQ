@@ -1,5 +1,7 @@
+certifi==2017.4.17
 charset-normalizer==3.3.2
 click==8.1.7
+colorama==0.4.6
 coloredlogs==15.0.1
 filelock==3.12.2
 future==1.0.0
@@ -16,13 +18,10 @@ sacremoses==0.0.53
 sentencepiece==0.2.0
 six==1.16.0
 sympy==1.10.1
-tokenizers==0.13.3
+tokenizers==0.8.1rc2
 torch==1.8.1
 tqdm==4.66.4
-transformers==4.30.2
+transformers==3.3.1
 typing_extensions==4.7.1
 urllib3==2.0.7
 zipp==3.15.0
-pyyaml==5.1
-colorama==0.4.6
-certifi==2017.4.17

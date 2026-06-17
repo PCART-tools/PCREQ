@@ -1,0 +1,5 @@
+2026-06-17 16:38:09,336 - INFO - *************Upgrade matplotlib from 3.0.2 to 3.4.0 in PyTorch-ENet*************
+2026-06-17 16:38:09,336 - INFO - Checking PyTorch-ENet is compatible with matplotlib3.4.0?...
+2026-06-17 16:38:09,463 - INFO - PyTorch-ENet is compatible with matplotlib3.4.0
+2026-06-17 16:38:13,204 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:38:13,204 - INFO - Time cost: 3.8705835342407227 s

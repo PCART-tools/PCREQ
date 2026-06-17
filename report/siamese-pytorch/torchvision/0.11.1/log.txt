@@ -1,0 +1,7 @@
+2026-06-17 17:29:32,248 - INFO - *************Upgrade torchvision from 0.2.1 to 0.11.1 in siamese-pytorch*************
+2026-06-17 17:29:32,248 - INFO - Checking siamese-pytorch is compatible with torchvision0.11.1?...
+2026-06-17 17:29:32,464 - INFO - siamese-pytorch is compatible with torchvision0.11.1
+2026-06-17 17:29:35,110 - INFO - Checking torchvision0.11.1 is compatible with torch1.10.0?...
+2026-06-17 17:29:36,963 - INFO - torchvision0.11.1 is not compatible with torch1.10.0-The torch.utils.model_zoo.load_url is deprecated.
+2026-06-17 17:29:38,041 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:29:38,041 - INFO - Time cost: 5.795079708099365 s

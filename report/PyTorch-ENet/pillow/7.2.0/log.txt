@@ -1,0 +1,7 @@
+2026-06-17 16:38:09,687 - INFO - *************Upgrade pillow from 6.2.0 to 7.2.0 in PyTorch-ENet*************
+2026-06-17 16:38:09,687 - INFO - Checking PyTorch-ENet is compatible with pillow7.2.0?...
+2026-06-17 16:38:09,750 - INFO - PyTorch-ENet is compatible with pillow7.2.0
+2026-06-17 16:38:12,865 - INFO - Checking torchvision0.3.0 is compatible with pillow7.2.0?...
+2026-06-17 16:38:12,983 - INFO - torchvision0.3.0 is compatible with pillow7.2.0
+2026-06-17 16:38:13,821 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:38:13,822 - INFO - Time cost: 4.137558221817017 s

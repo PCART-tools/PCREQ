@@ -1,0 +1,26 @@
+2026-06-17 17:01:45,462 - INFO - *************Upgrade tensorflow from 1.5.0 to 2.1.1 in deep-belief-network*************
+2026-06-17 17:01:45,462 - INFO - Checking deep-belief-network is compatible with tensorflow2.1.1?...
+2026-06-17 17:02:11,392 - INFO - deep-belief-network is not compatible with tensorflow2.1.1-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-06-17 17:02:11,438 - INFO - deep-belief-network is not compatible with tensorflow-2.1.1, change to tensorflow-2.1.0
+2026-06-17 17:02:11,438 - INFO - Checking deep-belief-network is compatible with tensorflow2.1.0?...
+2026-06-17 17:02:31,115 - INFO - deep-belief-network is not compatible with tensorflow2.1.0-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-06-17 17:02:31,142 - INFO - deep-belief-network is not compatible with tensorflow-2.1.0, change to tensorflow-2.0.4
+2026-06-17 17:02:31,143 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.4?...
+2026-06-17 17:02:47,839 - INFO - deep-belief-network is not compatible with tensorflow2.0.4-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-06-17 17:02:47,860 - INFO - deep-belief-network is not compatible with tensorflow-2.0.4, change to tensorflow-2.0.3
+2026-06-17 17:02:47,860 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.3?...
+2026-06-17 17:03:04,132 - INFO - deep-belief-network is not compatible with tensorflow2.0.3-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-06-17 17:03:04,153 - INFO - deep-belief-network is not compatible with tensorflow-2.0.3, change to tensorflow-2.0.2
+2026-06-17 17:03:04,153 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.2?...
+2026-06-17 17:03:20,052 - INFO - deep-belief-network is not compatible with tensorflow2.0.2-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-06-17 17:03:20,077 - INFO - deep-belief-network is not compatible with tensorflow-2.0.2, change to tensorflow-2.0.1
+2026-06-17 17:03:20,077 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.1?...
+2026-06-17 17:03:37,778 - INFO - deep-belief-network is not compatible with tensorflow2.0.1-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-06-17 17:03:37,818 - INFO - deep-belief-network is not compatible with tensorflow-2.0.1, change to tensorflow-2.0.0
+2026-06-17 17:03:37,818 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.0?...
+2026-06-17 17:03:53,066 - INFO - deep-belief-network is not compatible with tensorflow2.0.0-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-06-17 17:03:53,091 - INFO - deep-belief-network is not compatible with tensorflow-2.0.0, change to tensorflow-1.15.5
+2026-06-17 17:03:53,091 - INFO - Checking deep-belief-network is compatible with tensorflow1.15.5?...
+2026-06-17 17:04:08,313 - INFO - deep-belief-network is compatible with tensorflow1.15.5
+2026-06-17 17:04:17,504 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:04:17,504 - INFO - Time cost: 152.0457363128662 s

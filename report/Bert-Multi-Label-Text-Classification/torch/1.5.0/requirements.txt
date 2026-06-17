@@ -6,6 +6,7 @@ click==7.0
 cycler==0.10.0
 docutils==0.15.2
 filelock==3.12.2
+future==1.0.0
 idna==2.8
 jmespath==0.9.4
 joblib==0.13.2
@@ -31,4 +32,3 @@ torch==1.5.0
 tqdm==4.35.0
 transformers==2.5.1
 urllib3==1.25.3
-future==1.0.0

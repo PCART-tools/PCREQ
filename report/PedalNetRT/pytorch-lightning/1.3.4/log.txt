@@ -1,0 +1,9 @@
+2026-06-17 16:37:04,448 - INFO - *************Upgrade pytorch-lightning from 1.1.0 to 1.3.4 in PedalNetRT*************
+2026-06-17 16:37:04,448 - INFO - Checking PedalNetRT is compatible with pytorch-lightning1.3.4?...
+2026-06-17 16:37:05,800 - INFO - PedalNetRT is compatible with pytorch-lightning1.3.4
+2026-06-17 16:37:28,846 - INFO - Checking pytorch-lightning1.3.4 is compatible with pyyaml5.4.1?...
+2026-06-17 16:37:28,855 - INFO - pytorch-lightning1.3.4 is compatible with pyyaml5.4.1
+2026-06-17 16:37:28,856 - INFO - Checking PedalNetRT is compatible with pyyaml5.4.1?...
+2026-06-17 16:37:28,856 - INFO - PedalNetRT is compatible with pyyaml5.4.1
+2026-06-17 16:37:31,903 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:37:31,903 - INFO - Time cost: 27.458099603652954 s

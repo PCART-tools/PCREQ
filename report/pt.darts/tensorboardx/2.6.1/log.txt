@@ -1,0 +1,9 @@
+2026-06-17 17:28:05,874 - INFO - *************Upgrade tensorboardx from 1.6 to 2.6.1 in pt.darts*************
+2026-06-17 17:28:05,874 - INFO - Checking pt.darts is compatible with tensorboardx2.6.1?...
+2026-06-17 17:28:06,100 - INFO - pt.darts is compatible with tensorboardx2.6.1
+2026-06-17 17:28:08,986 - INFO - Checking tensorboardx2.6.1 is compatible with protobuf4.24.4?...
+2026-06-17 17:28:08,987 - INFO - tensorboardx2.6.1 is compatible with protobuf4.24.4
+2026-06-17 17:28:08,987 - INFO - Checking pt.darts is compatible with protobuf4.24.4?...
+2026-06-17 17:28:08,988 - INFO - pt.darts is compatible with protobuf4.24.4
+2026-06-17 17:28:09,210 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:28:09,210 - INFO - Time cost: 3.3375403881073 s

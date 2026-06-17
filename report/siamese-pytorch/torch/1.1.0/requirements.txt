@@ -14,4 +14,3 @@ sympy==1.10.1
 torch==1.1.0
 torchvision==0.2.2
 tqdm==4.19.9
-future==1.0.0

@@ -1,0 +1,17 @@
+2026-06-17 17:01:43,659 - INFO - *************Upgrade tensorflow from 1.5.0 to 2.0.3 in deep-belief-network*************
+2026-06-17 17:01:43,659 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.3?...
+2026-06-17 17:02:07,837 - INFO - deep-belief-network is not compatible with tensorflow2.0.3-The tensorflow.python.training.gradient_descent.GradientDescentOptimizer.__init__ is deprecated.
+2026-06-17 17:02:07,888 - INFO - deep-belief-network is not compatible with tensorflow-2.0.3, change to tensorflow-2.0.2
+2026-06-17 17:02:07,888 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.2?...
+2026-06-17 17:02:27,952 - INFO - deep-belief-network is not compatible with tensorflow2.0.2-The tensorflow.python.training.gradient_descent.GradientDescentOptimizer.__init__ is deprecated.
+2026-06-17 17:02:27,974 - INFO - deep-belief-network is not compatible with tensorflow-2.0.2, change to tensorflow-2.0.1
+2026-06-17 17:02:27,974 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.1?...
+2026-06-17 17:02:44,918 - INFO - deep-belief-network is not compatible with tensorflow2.0.1-The tensorflow.python.training.gradient_descent.GradientDescentOptimizer.__init__ is deprecated.
+2026-06-17 17:02:44,940 - INFO - deep-belief-network is not compatible with tensorflow-2.0.1, change to tensorflow-2.0.0
+2026-06-17 17:02:44,940 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.0?...
+2026-06-17 17:03:01,517 - INFO - deep-belief-network is not compatible with tensorflow2.0.0-The tensorflow.python.training.gradient_descent.GradientDescentOptimizer.__init__ is deprecated.
+2026-06-17 17:03:01,540 - INFO - deep-belief-network is not compatible with tensorflow-2.0.0, change to tensorflow-1.15.5
+2026-06-17 17:03:01,540 - INFO - Checking deep-belief-network is compatible with tensorflow1.15.5?...
+2026-06-17 17:03:17,295 - INFO - deep-belief-network is compatible with tensorflow1.15.5
+2026-06-17 17:03:27,081 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:03:27,081 - INFO - Time cost: 103.42563986778259 s

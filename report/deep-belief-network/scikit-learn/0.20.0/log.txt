@@ -1,0 +1,5 @@
+2026-06-17 17:01:25,489 - INFO - *************Upgrade scikit-learn from 0.18.1 to 0.20.0 in deep-belief-network*************
+2026-06-17 17:01:25,490 - INFO - Checking deep-belief-network is compatible with scikit-learn0.20.0?...
+2026-06-17 17:01:38,852 - INFO - deep-belief-network is compatible with scikit-learn0.20.0
+2026-06-17 17:01:47,220 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:01:47,221 - INFO - Time cost: 21.73427391052246 s

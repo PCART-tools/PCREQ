@@ -10,6 +10,8 @@ mpmath==1.2.1
 numpy==1.15.4
 pillow==6.2.2
 protobuf==3.20.0
+requests==2.31.0
+six==1.16.0
 sympy==1.10.1
 tensorboard==1.13.0
 tensorboardx==1.6
@@ -18,4 +20,3 @@ torchvision==0.13.0
 typing_extensions==4.7.1
 werkzeug==2.2.3
 zipp==3.15.0
-requests==2.31.0

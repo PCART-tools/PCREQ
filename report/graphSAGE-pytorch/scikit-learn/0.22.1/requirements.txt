@@ -1,4 +1,5 @@
 certifi==2021.5.30
+joblib==0.11
 numpy==1.16.2
 pillow==8.3.2
 pyhocon==0.3.51
@@ -9,4 +10,3 @@ six==1.12.0
 torch==1.0.1
 torchvision==0.2.2
 tqdm==4.19.9
-joblib==0.11

@@ -1,0 +1,7 @@
+2026-06-17 17:28:06,024 - INFO - *************Upgrade torchvision from 0.2.1 to 0.13.1 in pt.darts*************
+2026-06-17 17:28:06,025 - INFO - Checking pt.darts is compatible with torchvision0.13.1?...
+2026-06-17 17:28:06,207 - INFO - pt.darts is compatible with torchvision0.13.1
+2026-06-17 17:28:08,743 - INFO - Checking torchvision0.13.1 is compatible with torch1.12.1?...
+2026-06-17 17:28:11,406 - INFO - torchvision0.13.1 is not compatible with torch1.12.1-The torch.utils.model_zoo.load_url is deprecated.
+2026-06-17 17:28:12,110 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:28:12,110 - INFO - Time cost: 6.087619066238403 s

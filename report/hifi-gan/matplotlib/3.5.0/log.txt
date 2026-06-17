@@ -1,0 +1,9 @@
+2026-06-17 17:25:40,155 - INFO - *************Upgrade matplotlib from 3.1.3 to 3.5.0 in hifi-gan*************
+2026-06-17 17:25:40,156 - INFO - Checking hifi-gan is compatible with matplotlib3.5.0?...
+2026-06-17 17:25:51,947 - INFO - hifi-gan is compatible with matplotlib3.5.0
+2026-06-17 17:25:59,437 - INFO - Checking librosa0.7.2 is compatible with soundfile0.12.1?...
+2026-06-17 17:25:59,654 - INFO - librosa0.7.2 is compatible with soundfile0.12.1
+2026-06-17 17:25:59,654 - INFO - Checking hifi-gan is compatible with soundfile0.12.1?...
+2026-06-17 17:25:59,654 - INFO - hifi-gan is compatible with soundfile0.12.1
+2026-06-17 17:26:02,273 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:26:02,273 - INFO - Time cost: 22.119845628738403 s

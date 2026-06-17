@@ -1,0 +1,23 @@
+2026-06-17 17:01:25,535 - INFO - *************Upgrade scikit-learn from 0.18.1 to 0.23.2 in deep-belief-network*************
+2026-06-17 17:01:25,535 - INFO - Checking deep-belief-network is compatible with scikit-learn0.23.2?...
+2026-06-17 17:01:37,228 - INFO - deep-belief-network is not compatible with scikit-learn0.23.2-The sklearn.metrics.regression.mean_squared_error is deprecated.
+2026-06-17 17:01:37,242 - INFO - deep-belief-network is not compatible with scikit-learn-0.23.2, change to scikit-learn-0.23.1
+2026-06-17 17:01:37,243 - INFO - Checking deep-belief-network is compatible with scikit-learn0.23.1?...
+2026-06-17 17:01:47,315 - INFO - deep-belief-network is not compatible with scikit-learn0.23.1-The sklearn.metrics.regression.mean_squared_error is deprecated.
+2026-06-17 17:01:47,322 - INFO - deep-belief-network is not compatible with scikit-learn-0.23.1, change to scikit-learn-0.23.0
+2026-06-17 17:01:47,322 - INFO - Checking deep-belief-network is compatible with scikit-learn0.23.0?...
+2026-06-17 17:01:58,508 - INFO - deep-belief-network is not compatible with scikit-learn0.23.0-The sklearn.metrics.regression.mean_squared_error is deprecated.
+2026-06-17 17:01:58,518 - INFO - deep-belief-network is not compatible with scikit-learn-0.23.0, change to scikit-learn-0.22.2
+2026-06-17 17:01:58,518 - INFO - Checking deep-belief-network is compatible with scikit-learn0.22.2?...
+2026-06-17 17:02:09,593 - INFO - deep-belief-network is not compatible with scikit-learn0.22.2-The sklearn.metrics.regression.mean_squared_error is deprecated.
+2026-06-17 17:02:09,604 - INFO - deep-belief-network is not compatible with scikit-learn-0.22.2, change to scikit-learn-0.22.1
+2026-06-17 17:02:09,604 - INFO - Checking deep-belief-network is compatible with scikit-learn0.22.1?...
+2026-06-17 17:02:20,567 - INFO - deep-belief-network is not compatible with scikit-learn0.22.1-The sklearn.metrics.regression.mean_squared_error is deprecated.
+2026-06-17 17:02:20,573 - INFO - deep-belief-network is not compatible with scikit-learn-0.22.1, change to scikit-learn-0.22
+2026-06-17 17:02:20,573 - INFO - Checking deep-belief-network is compatible with scikit-learn0.22?...
+2026-06-17 17:02:27,166 - INFO - deep-belief-network is not compatible with scikit-learn0.22-The sklearn.metrics.regression.mean_squared_error is deprecated.
+2026-06-17 17:02:27,174 - INFO - deep-belief-network is not compatible with scikit-learn-0.22, change to scikit-learn-0.21.3
+2026-06-17 17:02:27,174 - INFO - Checking deep-belief-network is compatible with scikit-learn0.21.3?...
+2026-06-17 17:02:34,203 - INFO - deep-belief-network is compatible with scikit-learn0.21.3
+2026-06-17 17:02:39,694 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:02:39,694 - INFO - Time cost: 74.16077637672424 s

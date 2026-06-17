@@ -19,11 +19,11 @@ sacremoses==0.0.53
 sentencepiece==0.2.0
 seqeval==0.0.12
 six==1.16.0
-tokenizers==0.8.1.rc1
+tokenizers==0.8.1rc1
 torch==1.8.1
 tqdm==4.64.1
 transformers==3.0.2
+typing-extensions==4.1.1
 typing_extensions==4.1.1
 urllib3==1.26.19
 zipp==3.6.0
-typing-extensions==4.1.1

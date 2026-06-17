@@ -1,0 +1,7 @@
+2026-06-17 16:31:24,783 - INFO - *************Upgrade torch from 1.1.0 to 1.8.1 in Deep-SAD-PyTorch*************
+2026-06-17 16:31:24,784 - INFO - Checking Deep-SAD-PyTorch is compatible with torch1.8.1?...
+2026-06-17 16:31:27,462 - INFO - Deep-SAD-PyTorch is compatible with torch1.8.1
+2026-06-17 16:31:35,714 - INFO - Checking torchvision0.3.0 is compatible with torch1.8.1?...
+2026-06-17 16:31:35,917 - INFO - torchvision0.3.0 is compatible with torch1.8.1
+2026-06-17 16:31:40,866 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:31:40,867 - INFO - Time cost: 16.08593440055847 s

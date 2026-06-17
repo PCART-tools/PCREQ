@@ -1,0 +1,5 @@
+2026-06-17 16:35:30,245 - INFO - *************Upgrade torch from 1.6.0 to 1.10.2 in JointBERT*************
+2026-06-17 16:35:30,245 - INFO - Checking JointBERT is compatible with torch1.10.2?...
+2026-06-17 16:35:33,521 - INFO - JointBERT is compatible with torch1.10.2
+2026-06-17 16:35:36,088 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:35:36,088 - INFO - Time cost: 5.845579147338867 s

@@ -1,5 +1,6 @@
 coloredlogs==15.0.1
 cycler==0.11.0
+future==1.0.0
 humanfriendly==10.0
 imageio==2.9.0
 kiwisolver==1.4.5
@@ -15,6 +16,7 @@ python-dateutil==2.9.0.post0
 pywavelets==1.1.1
 scikit-image==0.15.0
 scipy==1.5.4
+six==1.16.0
 sympy==1.10.1
 tensorboardx==1.8
 terminaltables==3.1.0
@@ -22,4 +24,3 @@ torch==1.5.1
 torchvision==0.6.1
 tqdm==4.32.1
 typing_extensions==4.7.1
-future==1.0.0

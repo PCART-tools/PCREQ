@@ -1,0 +1,9 @@
+2026-06-17 16:40:45,154 - INFO - *************Upgrade numpy from 1.18.5 to 1.19.0 in Sentence-VAE*************
+2026-06-17 16:40:45,155 - INFO - Checking Sentence-VAE is compatible with numpy1.19.0?...
+2026-06-17 16:40:54,907 - INFO - Sentence-VAE is compatible with numpy1.19.0
+2026-06-17 16:40:55,256 - INFO - Checking tensorboardx2.0 is compatible with numpy1.19.0?...
+2026-06-17 16:40:55,460 - INFO - tensorboardx2.0 is compatible with numpy1.19.0
+2026-06-17 16:40:55,466 - INFO - Checking torch1.5.0 is compatible with numpy1.19.0?...
+2026-06-17 16:40:56,196 - INFO - torch1.5.0 is compatible with numpy1.19.0
+2026-06-17 16:40:58,697 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:40:58,698 - INFO - Time cost: 13.54540753364563 s

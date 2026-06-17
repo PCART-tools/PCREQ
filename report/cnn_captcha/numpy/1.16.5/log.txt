@@ -1,0 +1,9 @@
+2026-06-17 16:53:42,660 - INFO - *************Upgrade numpy from 1.16.2 to 1.16.5 in cnn_captcha*************
+2026-06-17 16:53:42,660 - INFO - Checking cnn_captcha is compatible with numpy1.16.5?...
+2026-06-17 16:54:02,765 - INFO - cnn_captcha is compatible with numpy1.16.5
+2026-06-17 16:54:07,575 - INFO - Checking matplotlib2.1.0 is compatible with numpy1.16.5?...
+2026-06-17 16:54:08,030 - INFO - matplotlib2.1.0 is compatible with numpy1.16.5
+2026-06-17 16:54:08,042 - INFO - Checking tensorflow1.7.0 is compatible with numpy1.16.5?...
+2026-06-17 16:54:22,503 - INFO - tensorflow1.7.0 is compatible with numpy1.16.5
+2026-06-17 16:54:26,661 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:54:26,661 - INFO - Time cost: 44.002193450927734 s

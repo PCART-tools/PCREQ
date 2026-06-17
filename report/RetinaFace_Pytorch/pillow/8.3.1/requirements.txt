@@ -23,4 +23,3 @@ torch==1.1.0
 torchvision==0.3.0
 tqdm==4.32.1
 typing_extensions==4.7.1
-future==1.0.0

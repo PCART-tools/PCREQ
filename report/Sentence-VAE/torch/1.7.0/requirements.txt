@@ -1,5 +1,7 @@
 click==8.1.7
+colorama==0.4.6
 coloredlogs==15.0.1
+dataclasses==0.6
 future==1.0.0
 humanfriendly==10.0
 importlib-metadata==6.7.0
@@ -16,5 +18,3 @@ torch==1.7.0
 tqdm==4.66.4
 typing_extensions==4.7.1
 zipp==3.15.0
-colorama==0.4.6
-dataclasses==0.6

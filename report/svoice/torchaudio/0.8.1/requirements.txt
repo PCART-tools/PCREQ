@@ -1,6 +1,7 @@
 antlr4-python3-runtime==4.8
 audioread==3.0.1
 cffi==1.15.1
+colorama==0.4.6
 coloredlogs==15.0.1
 colorlog==6.8.2
 decorator==5.1.1
@@ -33,4 +34,3 @@ torchaudio==0.8.1
 torchvision==0.9.1
 tqdm==4.51.0
 zipp==3.15.0
-colorama==0.4.6

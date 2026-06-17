@@ -1,0 +1,5 @@
+2026-06-17 16:38:46,550 - INFO - *************Upgrade torch from 1.6.0 to 1.12.0 in R-BERT*************
+2026-06-17 16:38:46,550 - INFO - Checking R-BERT is compatible with torch1.12.0?...
+2026-06-17 16:38:49,840 - INFO - R-BERT is compatible with torch1.12.0
+2026-06-17 16:38:52,979 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:38:52,979 - INFO - Time cost: 6.430171489715576 s
