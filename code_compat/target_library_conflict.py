@@ -12,6 +12,24 @@ import json, platform, time, re, ast, os, logging
 #from fuzzywuzzy import process
 from thefuzz import process
 
+
+def _safe_load_json(path, default=None):
+    """Load JSON from path, returning default on empty/corrupt files."""
+    try:
+        with open(path, 'r') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, ValueError, FileNotFoundError):
+        return default if default is not None else {}
+
+
+def _write_json(path, data):
+    """Atomic JSON write — unique tmp per call to prevent thread races."""
+    import uuid as _uuid
+    tmp = f"{path}.{_uuid.uuid4().hex[:8]}.tmp"
+    with open(tmp, 'w') as f:
+        json.dump(data, f)
+    os.replace(tmp, path)
+
 if (platform.system() == 'Windows'):
     slash = "\\"
 else:
@@ -280,7 +298,8 @@ def generate_full_parent_chains(lst):
     return result
 
 def full_CG(s, proj_path, target_project, target_library, start_version, target_version, start_library_path, target_library_path, target_library_call_module, proj, path, target_proj_dependency, python_version):
-    prefix = "" 
+    prefix = ""
+    entry_path = None
     if target_project != proj:  #例如torchvision-torch，从目标项目为入口得到torchvision实际使用torch的api
         FDG = get_FDG_from_requirements(target_proj_dependency, python_version)
         # 构建逆图
@@ -292,8 +311,7 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
         target_project_call_module = get_library_call_module(target_project)
         if not parent_chains:
             if os.path.isfile('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-outside.json'):
-                with open('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-outside.json', 'r') as file:
-                    data = json.load(file)
+                data = _safe_load_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-outside.json')
                 if target_library in data.keys():
                     s = data[target_library]
                 else:
@@ -310,34 +328,31 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                 if ls == "":
                     input1 = {}
                     input2 = []
-                    with open('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-outside.json', 'w') as file:
-                        json.dump(input1, file)
-                    with open('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-entry.json', 'w') as file:
-                        json.dump(input2, file)
+                    _write_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-outside.json', input1)
+                    _write_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-entry.json', input2)
                 else:
                     target_project_path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + target_project_call_module
                     partc = [target_project_path, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_project + target_proj_dependency[target_project] + ".json", "--entry-functions", ls]
                     cfmain(sys_argv=partc, if_add_package_name = True)
 
-                with open('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-outside.json', 'r') as file:
-                    data = json.load(file)
+                data = _safe_load_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-outside.json')
                 if target_library in data.keys():
                     s = data[target_library]
                 else:
                     s = []
             #建立proj-torchvision-torch调用图
+            entry_path = None
             ls = ""
             for name in s:
                 ls += name
                 ls += ","
             
+            entry_path = './data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + '-entry.json'
             if ls == "":
                 input1 = {}
                 input2 = []
-                with open('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + '-outside.json', 'w') as file:
-                    json.dump(input1, file)
-                with open('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + '-entry.json', 'w') as file: 
-                    json.dump(input2, file)
+                _write_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + '-outside.json', input1)
+                _write_json(entry_path, input2)
             else:
                 if os.path.exists(start_library_path):
                     partc = [start_library_path, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + ".json", "--entry-functions", ls]
@@ -349,12 +364,17 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                     result = '/'.join(split_path[:-2])
                     partc = [result, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + ".json", "--entry-functions", ls]
                 cfmain(sys_argv=partc, if_add_package_name = True)
-            #提取proj-torchvision调用的torch的API的全名
-            with open('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + '-entry.json', 'r') as file:
-                apis_full_name = json.load(file)
-            
-            with open('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-entry.json', 'r') as file:
-                api_to_examine = json.load(file)
+        apis_full_name = set()
+        if entry_path:
+            try:
+                with open(entry_path, 'r') as file:
+                    apis_full_name = json.load(file)
+            except (json.JSONDecodeError, FileNotFoundError):
+                pass
+            try:
+                api_to_examine = _safe_load_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-entry.json')
+            except (json.JSONDecodeError, FileNotFoundError):
+                api_to_examine = []
         else:
             apis_full_name = []
             api_to_examine = []
@@ -368,8 +388,7 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                     #print(prefix)
                     if os.path.isfile('./data/call_graph/' + prefix + '-outside.json'):
                         #检查是否有outside.json
-                        with open('./data/call_graph/' + prefix + '-outside.json', 'r') as file:
-                            data = json.load(file)
+                        data = _safe_load_json('./data/call_graph/' + prefix + '-outside.json')
                     else:
                         #重新建立调用图
                         if i == 0:
@@ -383,24 +402,24 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                             if ls == "":
                                 input1 = {}
                                 input2 = []
-                                with open('./data/call_graph/' + prefix + '-outside.json', 'w') as file:
-                                    json.dump(input1, file)
-                                with open('./data/call_graph/' + prefix + '-entry.json', 'w') as file:
-                                    json.dump(input2, file)
+                                _write_json('./data/call_graph/' + prefix + '-outside.json', input1)
+                                _write_json('./data/call_graph/' + prefix + '-entry.json', input2)
                             else:
                                 chain_proj_path = library_path_prefix + chain_proj + slash + chain_proj + target_proj_dependency[chain_proj] + slash + chain_proj_call_module
-                                partc = [chain_proj_path, "--language", "py", "--output", "data/call_graph/" + prefix + ".json", "--entry-functions", ls]
-                                cfmain(sys_argv=partc, if_add_package_name = True)
+                                if os.path.isdir(chain_proj_path):
+                                    partc = [chain_proj_path, "--language", "py", "--output", "data/call_graph/" + prefix + ".json", "--entry-functions", ls]
+                                    cfmain(sys_argv=partc, if_add_package_name = True)
+                                else:
+                                    _write_json('./data/call_graph/' + prefix + '-outside.json', {})
+                                    _write_json('./data/call_graph/' + prefix + '-entry.json', [])
                         else:
                             #解决一些库的名字就带-的问题
                             pos = prefix.rfind('-')
                             if os.path.exists('./data/call_graph/' + prefix[:pos] + '-outside.json'):
-                                with open('./data/call_graph/' + prefix[:pos] + '-outside.json', 'r') as file:
-                                    data = json.load(file)
+                                data = _safe_load_json('./data/call_graph/' + prefix[:pos] + '-outside.json')
                             else:
                                 pos = prefix[:pos].rfind('-')
-                                with open('./data/call_graph/' + prefix[:pos] + '-outside.json', 'r') as file:
-                                    data = json.load(file)
+                                data = _safe_load_json('./data/call_graph/' + prefix[:pos] + '-outside.json')
                             if chain_proj in data.keys():
                                 new_s = data[chain_proj]
                             else:
@@ -413,23 +432,23 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                             if ls == "":
                                 input1 = {}
                                 input2 = []
-                                with open('./data/call_graph/' + prefix + '-outside.json', 'w') as file:
-                                    json.dump(input1, file)
-                                with open('./data/call_graph/' + prefix + '-entry.json', 'w') as file:
-                                    json.dump(input2, file)
+                                _write_json('./data/call_graph/' + prefix + '-outside.json', input1)
+                                _write_json('./data/call_graph/' + prefix + '-entry.json', input2)
                             else:
                                 chain_proj_path = library_path_prefix + chain_proj + slash + chain_proj + target_proj_dependency[chain_proj] + slash + chain_proj_call_module
-                                partc = [chain_proj_path, "--language", "py", "--output", "data/call_graph/" + prefix + ".json", "--entry-functions", ls]
-                                cfmain(sys_argv=partc, if_add_package_name = True)
+                                if os.path.isdir(chain_proj_path):
+                                    partc = [chain_proj_path, "--language", "py", "--output", "data/call_graph/" + prefix + ".json", "--entry-functions", ls]
+                                    cfmain(sys_argv=partc, if_add_package_name = True)
+                                else:
+                                    _write_json('./data/call_graph/' + prefix + '-outside.json', {})
+                                    _write_json('./data/call_graph/' + prefix + '-entry.json', [])
                     i = i + 1                      
                     #prj-A-B-torchvision-torch调用图建立
-                    with open('./data/call_graph/' + prefix + '-entry.json', 'r') as file:
-                        tmp = json.load(file)
+                    tmp = _safe_load_json('./data/call_graph/' + prefix + '-entry.json', default=[])
                     api_to_examine = api_to_examine + tmp
                     ls = ""
                     new_s = []
-                    with open('./data/call_graph/' + prefix + "-outside.json", 'r') as file:
-                        data = json.load(file)
+                    data = _safe_load_json('./data/call_graph/' + prefix + "-outside.json")
                     if target_library in data.keys():
                         new_s = data[target_library]
                     else:
@@ -442,18 +461,15 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                     if ls == "":
                         input1 = {}
                         input2 = []
-                        with open('./data/call_graph/' + output_path + '-outside.json', 'w') as file:
-                            json.dump(input1, file)
-                        with open('./data/call_graph/' + output_path + '-entry.json', 'w') as file:
-                            json.dump(input2, file)
+                        _write_json('./data/call_graph/' + output_path + '-outside.json', input1)
+                        _write_json('./data/call_graph/' + output_path + '-entry.json', input2)
                     else:
                         partc = [start_library_path, "--language", "py", "--output", "data/call_graph/" + output_path + ".json", "--entry-functions", ls]
                         cfmain(sys_argv=partc, if_add_package_name = True)
 
                     #提取proj-A-B-torchvision调用的torch的API的全名
                     #print(end_output_path)
-                    with open('./data/call_graph/' + output_path + '-entry.json', 'r') as file:
-                        tmp = json.load(file)
+                    tmp = _safe_load_json('./data/call_graph/' + output_path + '-entry.json', default=[])
                     apis_full_name = apis_full_name + tmp
                 
     else:
@@ -467,10 +483,8 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
         if ls == "":
             input1 = {}
             input2 = []
-            with open('./data/call_graph/' + target_project + "-" + target_library + start_version + '-outside.json', 'w') as file:
-                json.dump(input1, file)
-            with open('./data/call_graph/' + target_project + "-" + target_library + start_version + '-entry.json', 'w') as file:
-                json.dump(input2, file)
+            _write_json('./data/call_graph/' + target_project + "-" + target_library + start_version + '-outside.json', input1)
+            _write_json('./data/call_graph/' + target_project + "-" + target_library + start_version + '-entry.json', input2)
         else:
             if os.path.exists(start_library_path):
                 partc = [start_library_path, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_library + start_version + ".json", "--entry-functions", ls]
@@ -484,8 +498,12 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                 partc = [result, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_library + start_version + ".json", "--entry-functions", ls]
             cfmain(sys_argv=partc, if_add_package_name = True)
         #提取项目调用的API的全名
-        with open('./data/call_graph/' + target_project + "-" + target_library + start_version + '-entry.json', 'r') as file:
-            apis_full_name = json.load(file)
+        entry_path = './data/call_graph/' + target_project + "-" + target_library + start_version + '-entry.json'
+        try:
+            with open(entry_path, 'r') as file:
+                apis_full_name = json.load(file)
+        except (json.JSONDecodeError, FileNotFoundError):
+            apis_full_name = set()
         api_to_examine = s.copy()
     #logging.info(f"**{apis_full_name}******************")
     return apis_full_name, api_to_examine

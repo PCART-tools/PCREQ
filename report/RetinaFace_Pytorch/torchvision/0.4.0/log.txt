@@ -1,0 +1,9 @@
+2026-06-17 16:39:14,504 - INFO - *************Upgrade torchvision from 0.3.0 to 0.4.0 in RetinaFace_Pytorch*************
+2026-06-17 16:39:14,504 - INFO - Checking RetinaFace_Pytorch is compatible with torchvision0.4.0?...
+2026-06-17 16:39:14,927 - INFO - RetinaFace_Pytorch is compatible with torchvision0.4.0
+2026-06-17 16:39:19,796 - INFO - Checking torchvision0.4.0 is compatible with torch1.2.0?...
+2026-06-17 16:39:21,743 - INFO - torchvision0.4.0 is compatible with torch1.2.0
+2026-06-17 16:39:21,745 - INFO - Checking RetinaFace_Pytorch is compatible with torch1.2.0?...
+2026-06-17 16:39:24,611 - INFO - RetinaFace_Pytorch is compatible with torch1.2.0
+2026-06-17 16:39:25,045 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:39:25,046 - INFO - Time cost: 10.54401445388794 s

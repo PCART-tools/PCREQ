@@ -1,0 +1,7 @@
+2026-06-17 17:28:15,415 - INFO - *************Upgrade numpy from 1.15.0 to 1.17.3 in pytorch-hed*************
+2026-06-17 17:28:15,415 - INFO - Checking pytorch-hed is compatible with numpy1.17.3?...
+2026-06-17 17:28:27,487 - INFO - pytorch-hed is compatible with numpy1.17.3
+2026-06-17 17:28:27,620 - INFO - Checking torch1.7.0 is compatible with numpy1.17.3?...
+2026-06-17 17:28:40,323 - INFO - torch1.7.0 is compatible with numpy1.17.3
+2026-06-17 17:28:43,572 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:28:43,572 - INFO - Time cost: 28.15811538696289 s

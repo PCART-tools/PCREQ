@@ -1,0 +1,7 @@
+2026-06-17 16:38:14,315 - INFO - *************Upgrade torch from 1.1.0 to 1.2.0 in PyTorch-ENet*************
+2026-06-17 16:38:14,315 - INFO - Checking PyTorch-ENet is compatible with torch1.2.0?...
+2026-06-17 16:38:17,993 - INFO - PyTorch-ENet is compatible with torch1.2.0
+2026-06-17 16:38:22,161 - INFO - Checking torchvision0.3.0 is compatible with torch1.2.0?...
+2026-06-17 16:38:22,310 - INFO - torchvision0.3.0 is compatible with torch1.2.0
+2026-06-17 16:38:23,697 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:38:23,697 - INFO - Time cost: 9.38551115989685 s

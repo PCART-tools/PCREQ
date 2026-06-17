@@ -1,0 +1,5 @@
+2026-06-17 17:28:16,951 - INFO - *************Upgrade torch from 1.7.0 to 1.8.1 in pytorch-hed*************
+2026-06-17 17:28:16,951 - INFO - Checking pytorch-hed is compatible with torch1.8.1?...
+2026-06-17 17:28:27,068 - INFO - pytorch-hed is compatible with torch1.8.1
+2026-06-17 17:28:30,047 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:28:30,047 - INFO - Time cost: 13.100173711776733 s

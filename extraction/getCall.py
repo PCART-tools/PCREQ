@@ -300,113 +300,72 @@ def get_last_part_after_first_parenthesis(s):
     parts = s.split('(', 1)  # 仅分割一次
     return parts[-1] if len(parts) > 1 else parts[0]  # 如果有 '('，返回分割后的最后一部分，否则返回原字符串
 
-def get_all_used_api(data_dir, package_name):
-    pkg = data_dir.split('/')[-1]
-    pkg_ver = data_dir.split('/')[-2]
-
-    if os.path.exists(f"./extraction/tmp.json"):
-        with open("./extraction/tmp.json", "r") as f:
-            all_results = json.load(f)
-    else:
-        all_results = {}
-        with open("./extraction/tmp.json", "w") as f:
-            json.dump(all_results, f)
-
-    if pkg not in all_results:
-        all_results[pkg] = {}
-        if pkg_ver not in all_results[pkg]:
-            all_results[pkg][pkg_ver] = {}
-
-            all_apis = set()
-            new_CallDict = {}
-            api_file_map = {}
-            api_paras_map = {}
-            all_files = get_path_by_extension(data_dir)
-            for filename in all_files:
-                CallDict = getCallFunction_wo_libname(filename)
-                values = CallDict.values()
-                for value in values:
-                    all_apis.add(value.split('(')[0])
-                    api_paras_map[value.split('(')[0]] = "("+get_last_part_after_first_parenthesis(value)
-                for key in CallDict:
-                    new_value = key.split('(')[0]
-                    new_key = CallDict[key].split('(')[0]
-                    new_CallDict[new_key] = new_value
-                    api_file_map[new_value] = filename
-            all_results[pkg][pkg_ver]["all_apis"] = list(all_apis)
-            all_results[pkg][pkg_ver]["new_CallDict"] = new_CallDict
-            all_results[pkg][pkg_ver]["api_file_map"] = api_file_map
-            all_results[pkg][pkg_ver]["api_paras_map"] = api_paras_map
-            #print(all_results)
-            with open("./extraction/tmp.json", "w") as f:
-                json.dump(all_results, f)
-    else:
-        if pkg_ver not in all_results[pkg]:
-            all_results[pkg][pkg_ver] = {}
-
-            all_apis = set()
-            new_CallDict = {}
-            api_file_map = {}
-            api_paras_map = {}
-            all_files = get_path_by_extension(data_dir)
-            for filename in all_files:
-                CallDict = getCallFunction_wo_libname(filename)
-                values = CallDict.values()
-                for value in values:
-                    all_apis.add(value.split('(')[0])
-                    api_paras_map[value.split('(')[0]] = "("+get_last_part_after_first_parenthesis(value)
-                for key in CallDict:
-                    new_value = key.split('(')[0]
-                    new_key = CallDict[key].split('(')[0]
-                    new_CallDict[new_key] = new_value
-                    api_file_map[new_value] = filename
-            all_results[pkg][pkg_ver]["all_apis"] = list(all_apis)
-            all_results[pkg][pkg_ver]["new_CallDict"] = new_CallDict
-            all_results[pkg][pkg_ver]["api_file_map"] = api_file_map
-            all_results[pkg][pkg_ver]["api_paras_map"] = api_paras_map
-            #print(all_results)
-            with open("./extraction/tmp.json", "w") as f:
-                json.dump(all_results, f)
-    
+def _extract_api_data(data_dir):
     all_apis = set()
-    for i in all_results[pkg][pkg_ver]["all_apis"]:
-        if i.startswith(package_name):
-            all_apis.add(i)
-
-    new_CallDict = {}
-    for key in all_results[pkg][pkg_ver]["new_CallDict"]:
-        if key.startswith(package_name):
-            new_CallDict[key] = all_results[pkg][pkg_ver]["new_CallDict"][key]
-
-    api_file_map = {}
-    for key in all_results[pkg][pkg_ver]["api_file_map"]:
-        if key.startswith(package_name):
-            api_file_map[key] = all_results[pkg][pkg_ver]["api_file_map"][key]
-
-    api_paras_map = {}
-    for key in all_results[pkg][pkg_ver]["api_paras_map"]:
-        if key.startswith(package_name):
-            api_paras_map[key.split('.')[-1]] = all_results[pkg][pkg_ver]["api_paras_map"][key]
-   
-    
-    '''all_apis = set()
     new_CallDict = {}
     api_file_map = {}
     api_paras_map = {}
-    all_file_names = get_path_by_extension(data_dir)
-    for filename in all_file_names:
-        CallDict = getCallFunction(filename, package_name)
+    all_files = get_path_by_extension(data_dir)
+    for filename in all_files:
+        CallDict = getCallFunction_wo_libname(filename)
         values = CallDict.values()
         for value in values:
             all_apis.add(value.split('(')[0])
-            api_paras_map[value.split('(')[0].split('.')[-1]] = "("+get_last_part_after_first_parenthesis(value)
+            api_paras_map[value.split('(')[0]] = "("+get_last_part_after_first_parenthesis(value)
         for key in CallDict:
             new_value = key.split('(')[0]
             new_key = CallDict[key].split('(')[0]
             new_CallDict[new_key] = new_value
-            api_file_map[new_value] = filename'''
-    
-    
+            api_file_map[new_value] = filename
+    return {
+        "all_apis": list(all_apis),
+        "new_CallDict": new_CallDict,
+        "api_file_map": api_file_map,
+        "api_paras_map": api_paras_map,
+    }
+
+
+def get_all_used_api(data_dir, package_name):
+    pkg = data_dir.split('/')[-1]
+    pkg_ver = data_dir.split('/')[-2]
+
+    cache_dir = "./extraction/cache"
+    cache_file = os.path.join(cache_dir, pkg, f"{pkg_ver}.json")
+
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "r") as f:
+                result = json.load(f)
+        except json.JSONDecodeError:
+            result = _extract_api_data(data_dir)
+    else:
+        result = _extract_api_data(data_dir)
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        tmp_file = f"{cache_file}.{os.getpid()}.tmp"
+        with open(tmp_file, "w") as f:
+            json.dump(result, f)
+        os.replace(tmp_file, cache_file)
+
+    all_apis = set()
+    for i in result["all_apis"]:
+        if i.startswith(package_name):
+            all_apis.add(i)
+
+    new_CallDict = {}
+    for key in result["new_CallDict"]:
+        if key.startswith(package_name):
+            new_CallDict[key] = result["new_CallDict"][key]
+
+    api_file_map = {}
+    for key in result["api_file_map"]:
+        if key.startswith(package_name):
+            api_file_map[key] = result["api_file_map"][key]
+
+    api_paras_map = {}
+    for key in result["api_paras_map"]:
+        if key.startswith(package_name):
+            api_paras_map[key.split('.')[-1]] = result["api_paras_map"][key]
+
     return all_apis, new_CallDict, api_file_map, api_paras_map
 
 if __name__ == '__main__':

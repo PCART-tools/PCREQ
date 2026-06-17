@@ -1,0 +1,9 @@
+2026-06-17 16:53:42,673 - INFO - *************Upgrade numpy from 1.16.2 to 1.17.4 in cnn_captcha*************
+2026-06-17 16:53:42,674 - INFO - Checking cnn_captcha is compatible with numpy1.17.4?...
+2026-06-17 16:54:03,307 - INFO - cnn_captcha is compatible with numpy1.17.4
+2026-06-17 16:54:11,952 - INFO - Checking matplotlib2.1.0 is compatible with numpy1.17.4?...
+2026-06-17 16:54:12,735 - INFO - matplotlib2.1.0 is compatible with numpy1.17.4
+2026-06-17 16:54:12,762 - INFO - Checking tensorflow1.7.0 is compatible with numpy1.17.4?...
+2026-06-17 16:54:33,115 - INFO - tensorflow1.7.0 is compatible with numpy1.17.4
+2026-06-17 16:54:37,024 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:54:37,024 - INFO - Time cost: 54.35315489768982 s

@@ -1,0 +1,7 @@
+2026-06-17 17:29:28,595 - INFO - *************Upgrade pillow from 5.4.1 to 8.3.2 in siamese-pytorch*************
+2026-06-17 17:29:28,595 - INFO - Checking siamese-pytorch is compatible with pillow8.3.2?...
+2026-06-17 17:29:28,730 - INFO - siamese-pytorch is compatible with pillow8.3.2
+2026-06-17 17:29:32,073 - INFO - Checking torchvision0.2.2 is compatible with pillow8.3.2?...
+2026-06-17 17:29:32,177 - INFO - torchvision0.2.2 is compatible with pillow8.3.2
+2026-06-17 17:29:33,105 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:29:33,105 - INFO - Time cost: 4.512802362442017 s

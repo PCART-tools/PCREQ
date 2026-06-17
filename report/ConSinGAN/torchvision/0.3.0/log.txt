@@ -1,0 +1,7 @@
+2026-06-17 16:31:06,114 - INFO - *************Upgrade torchvision from 0.2.2 to 0.3.0 in ConSinGAN*************
+2026-06-17 16:31:06,115 - INFO - Checking ConSinGAN is compatible with torchvision0.3.0?...
+2026-06-17 16:31:06,148 - INFO - ConSinGAN is compatible with torchvision0.3.0
+2026-06-17 16:31:12,184 - INFO - Checking ConSinGAN is compatible with scikit-learn0.22.1?...
+2026-06-17 16:31:12,184 - INFO - ConSinGAN is compatible with scikit-learn0.22.1
+2026-06-17 16:31:12,534 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:31:12,534 - INFO - Time cost: 6.421588897705078 s

@@ -9,6 +9,7 @@ networkx==2.6.3
 numpy==1.16.4
 opencv-python==4.1.0.25
 pillow==6.1.0
+pooch==0.5.2
 protobuf==3.20.0
 pyparsing==3.1.2
 python-dateutil==2.9.0.post0
@@ -19,10 +20,8 @@ six==1.16.0
 sympy==1.10.1
 tensorboardx==1.8
 terminaltables==3.1.0
+tifffile==2019.7.26
 torch==1.1.0
 torchvision==0.3.0
 tqdm==4.32.1
 typing_extensions==4.7.1
-pooch==0.5.2
-tifffile==2019.7.26
-future==1.0.0

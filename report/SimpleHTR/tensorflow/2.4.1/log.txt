@@ -1,0 +1,5 @@
+2026-06-17 16:41:00,656 - INFO - *************Upgrade tensorflow from 2.4.0 to 2.4.1 in SimpleHTR*************
+2026-06-17 16:41:00,656 - INFO - Checking SimpleHTR is compatible with tensorflow2.4.1?...
+2026-06-17 16:41:23,829 - INFO - SimpleHTR is compatible with tensorflow2.4.1
+2026-06-17 16:41:35,343 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:41:35,343 - INFO - Time cost: 34.68952560424805 s

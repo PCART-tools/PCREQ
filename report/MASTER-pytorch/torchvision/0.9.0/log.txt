@@ -1,0 +1,9 @@
+2026-06-17 16:36:14,927 - INFO - *************Upgrade torchvision from 0.6.1 to 0.9.0 in MASTER-pytorch*************
+2026-06-17 16:36:14,927 - INFO - Checking MASTER-pytorch is compatible with torchvision0.9.0?...
+2026-06-17 16:36:15,513 - INFO - MASTER-pytorch is compatible with torchvision0.9.0
+2026-06-17 16:36:16,419 - INFO - Checking torchvision0.9.0 is compatible with torch1.8.0?...
+2026-06-17 16:36:17,358 - INFO - torchvision0.9.0 is compatible with torch1.8.0
+2026-06-17 16:36:17,362 - INFO - Checking MASTER-pytorch is compatible with torch1.8.0?...
+2026-06-17 16:36:20,999 - INFO - MASTER-pytorch is compatible with torch1.8.0
+2026-06-17 16:36:21,442 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:36:21,442 - INFO - Time cost: 6.518571376800537 s

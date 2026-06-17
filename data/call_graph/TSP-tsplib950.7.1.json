@@ -1,1 +1,0 @@
-{"tsplib95.loaders.load": ["<builtin>.open", "tsplib95.loaders.read"], "tsplib95.loaders.read": ["tsplib95.loaders.parse"]}

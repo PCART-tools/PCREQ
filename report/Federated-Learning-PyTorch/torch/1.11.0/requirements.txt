@@ -1,3 +1,4 @@
+colorama==0.4.6
 coloredlogs==15.0.1
 cycler==0.11.0
 humanfriendly==10.0
@@ -9,6 +10,7 @@ pillow==6.2.2
 protobuf==4.24.4
 pyparsing==3.1.2
 python-dateutil==2.9.0.post0
+requests==2.31.0
 six==1.16.0
 sympy==1.10.1
 tensorboardx==1.4
@@ -16,5 +18,3 @@ torch==1.11.0
 torchvision==0.12.0
 tqdm==4.66.4
 typing_extensions==4.7.1
-requests==2.31.0
-colorama==0.4.6

@@ -1,0 +1,5 @@
+2026-06-17 17:28:44,164 - INFO - *************Upgrade torch from 1.6.0 to 1.9.0 in pytorch-liteflownet*************
+2026-06-17 17:28:44,164 - INFO - Checking pytorch-liteflownet is compatible with torch1.9.0?...
+2026-06-17 17:28:47,257 - INFO - pytorch-liteflownet is compatible with torch1.9.0
+2026-06-17 17:28:49,356 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:28:49,356 - INFO - Time cost: 5.193198919296265 s

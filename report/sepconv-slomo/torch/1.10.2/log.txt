@@ -1,0 +1,5 @@
+2026-06-17 17:29:19,732 - INFO - *************Upgrade torch from 1.7.0 to 1.10.2 in sepconv-slomo*************
+2026-06-17 17:29:19,732 - INFO - Checking sepconv-slomo is compatible with torch1.10.2?...
+2026-06-17 17:29:24,104 - INFO - sepconv-slomo is compatible with torch1.10.2
+2026-06-17 17:29:26,564 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:29:26,564 - INFO - Time cost: 6.834187269210815 s

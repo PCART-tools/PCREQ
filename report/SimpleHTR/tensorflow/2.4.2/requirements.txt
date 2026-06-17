@@ -33,6 +33,7 @@ python-dateutil==2.9.0.post0
 requests==2.27.1
 requests-oauthlib==2.0.0
 rsa==4.9
+setuptools==41.0.0
 six==1.15.0
 tensorboard==2.10.1
 tensorboard-data-server==0.6.1
@@ -43,7 +44,6 @@ termcolor==1.1.0
 typing-extensions==3.7.4.3
 urllib3==1.26.19
 werkzeug==2.0.3
+wheel==0.35.0
 wrapt==1.12.1
 zipp==3.6.0
-wheel==0.35.0
-setuptools==41.0.0

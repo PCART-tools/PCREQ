@@ -1,1 +1,0 @@
-{"tqdm.std.tqdm.__new__": ["tqdm._monitor.TMonitor.__init__", "warnings.warn", "<builtin>.str"], "tqdm._monitor.TMonitor.__init__": ["threading.Thread.__init__", "atexit.register"]}

@@ -1,0 +1,11 @@
+2026-06-17 17:01:25,554 - INFO - *************Upgrade scikit-learn from 0.18.1 to 0.22.1 in deep-belief-network*************
+2026-06-17 17:01:25,554 - INFO - Checking deep-belief-network is compatible with scikit-learn0.22.1?...
+2026-06-17 17:01:34,629 - INFO - deep-belief-network is not compatible with scikit-learn0.22.1-The sklearn.metrics.classification.accuracy_score is deprecated.
+2026-06-17 17:01:34,646 - INFO - deep-belief-network is not compatible with scikit-learn-0.22.1, change to scikit-learn-0.22
+2026-06-17 17:01:34,646 - INFO - Checking deep-belief-network is compatible with scikit-learn0.22?...
+2026-06-17 17:01:41,740 - INFO - deep-belief-network is not compatible with scikit-learn0.22-The sklearn.metrics.classification.accuracy_score is deprecated.
+2026-06-17 17:01:41,746 - INFO - deep-belief-network is not compatible with scikit-learn-0.22, change to scikit-learn-0.21.3
+2026-06-17 17:01:41,746 - INFO - Checking deep-belief-network is compatible with scikit-learn0.21.3?...
+2026-06-17 17:01:49,494 - INFO - deep-belief-network is compatible with scikit-learn0.21.3
+2026-06-17 17:01:59,181 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:01:59,182 - INFO - Time cost: 33.6294219493866 s

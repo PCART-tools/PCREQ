@@ -330,7 +330,7 @@ def setup_logging(log_filename):
 
 def save_dict_to_file(d, filename='output.txt'):
     # 格式化字典
-    formatted_output = '\n'.join([f"{key}=={value}" for key, value in d.items()])
+    formatted_output = '\n'.join([f"{key}=={value}" for key, value in sorted(d.items())])
     
     # 将格式化后的内容写入文件
     with open(filename, 'w') as file:
@@ -360,10 +360,6 @@ def update_project_dependencies(target_proj_dependency, res):
         if target_proj_dependency.get(pkg) != ver:
             target_proj_dependency[pkg] = ver
     return target_proj_dependency
-
-def cleanup_temp_files():
-    if os.path.exists("./extraction/tmp.json"):
-        os.remove("./extraction/tmp.json")
 
 def get_library_paths(library_path_prefix, target_library, version, call_module):
     return f"{library_path_prefix}{target_library}/{target_library}{version}/{call_module}"

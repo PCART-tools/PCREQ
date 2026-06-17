@@ -14,8 +14,5 @@ tensorflow==1.5.0
 tensorflow-tensorboard==1.5.1
 typing_extensions==4.1.1
 werkzeug==2.0.3
+wheel==0.26.0
 zipp==3.6.0
-backports.weakref==1.0rc1
-enum34==1.1.6
-wheel==0.37.1
-mock==2.0.0

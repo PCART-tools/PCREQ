@@ -1,5 +1,8 @@
+colorama==0.4.6
 coloredlogs==15.0.1
 cycler==0.11.0
+dataclasses==0.6
+future==1.0.0
 humanfriendly==10.0
 kiwisolver==1.4.5
 matplotlib==3.0.1
@@ -16,6 +19,3 @@ torch==1.7.0
 torchvision==0.8.1
 tqdm==4.66.4
 typing_extensions==4.7.1
-future==1.0.0
-dataclasses==0.6
-colorama==0.4.6

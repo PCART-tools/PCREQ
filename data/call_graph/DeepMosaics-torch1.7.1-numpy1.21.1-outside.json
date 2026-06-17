@@ -1,1 +1,0 @@
-{"<builtin>": ["<builtin>.type", "<builtin>.issubclass", "<builtin>.ValueError", "<builtin>.list", "<builtin>.tuple", "<builtin>.len", "<builtin>.enumerate", "<builtin>.set", "<builtin>.sorted", "<builtin>.range", "<builtin>.isinstance", "<builtin>.hasattr"], "warnings": ["warnings.warn"], "operator": ["operator.index"]}

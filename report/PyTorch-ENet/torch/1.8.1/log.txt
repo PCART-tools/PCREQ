@@ -1,0 +1,7 @@
+2026-06-17 16:38:14,461 - INFO - *************Upgrade torch from 1.1.0 to 1.8.1 in PyTorch-ENet*************
+2026-06-17 16:38:14,462 - INFO - Checking PyTorch-ENet is compatible with torch1.8.1?...
+2026-06-17 16:38:17,583 - INFO - PyTorch-ENet is compatible with torch1.8.1
+2026-06-17 16:38:21,835 - INFO - Checking torchvision0.3.0 is compatible with torch1.8.1?...
+2026-06-17 16:38:22,030 - INFO - torchvision0.3.0 is compatible with torch1.8.1
+2026-06-17 16:38:26,899 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:38:26,899 - INFO - Time cost: 12.44136905670166 s

@@ -1,0 +1,7 @@
+2026-06-17 17:26:52,658 - INFO - *************Upgrade pandas from 1.0.3 to 1.3.5 in nlp_classification*************
+2026-06-17 17:26:52,658 - INFO - Checking nlp_classification is compatible with pandas1.3.5?...
+2026-06-17 17:27:10,171 - INFO - nlp_classification is compatible with pandas1.3.5
+2026-06-17 17:27:57,420 - INFO - Checking nlp_classification is compatible with tensorboard-plugin-wit1.8.1?...
+2026-06-17 17:27:57,421 - INFO - nlp_classification is compatible with tensorboard-plugin-wit1.8.1
+2026-06-17 17:28:04,038 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:28:04,039 - INFO - Time cost: 71.38279008865356 s

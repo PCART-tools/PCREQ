@@ -1,0 +1,20 @@
+2026-06-17 17:01:44,501 - INFO - *************Upgrade tensorflow from 1.5.0 to 2.0.4 in deep-belief-network*************
+2026-06-17 17:01:44,501 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.4?...
+2026-06-17 17:02:05,405 - INFO - deep-belief-network is not compatible with tensorflow2.0.4-The tensorflow.python.ops.state_ops.assign_add is deprecated.
+2026-06-17 17:02:05,430 - INFO - deep-belief-network is not compatible with tensorflow-2.0.4, change to tensorflow-2.0.3
+2026-06-17 17:02:05,430 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.3?...
+2026-06-17 17:02:29,207 - INFO - deep-belief-network is not compatible with tensorflow2.0.3-The tensorflow.python.ops.state_ops.assign_add is deprecated.
+2026-06-17 17:02:29,258 - INFO - deep-belief-network is not compatible with tensorflow-2.0.3, change to tensorflow-2.0.2
+2026-06-17 17:02:29,258 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.2?...
+2026-06-17 17:02:55,387 - INFO - deep-belief-network is not compatible with tensorflow2.0.2-The tensorflow.python.ops.state_ops.assign_add is deprecated.
+2026-06-17 17:02:55,423 - INFO - deep-belief-network is not compatible with tensorflow-2.0.2, change to tensorflow-2.0.1
+2026-06-17 17:02:55,424 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.1?...
+2026-06-17 17:03:20,690 - INFO - deep-belief-network is not compatible with tensorflow2.0.1-The tensorflow.python.ops.state_ops.assign_add is deprecated.
+2026-06-17 17:03:20,723 - INFO - deep-belief-network is not compatible with tensorflow-2.0.1, change to tensorflow-2.0.0
+2026-06-17 17:03:20,724 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.0?...
+2026-06-17 17:03:38,229 - INFO - deep-belief-network is not compatible with tensorflow2.0.0-The tensorflow.python.ops.state_ops.assign_add is deprecated.
+2026-06-17 17:03:38,255 - INFO - deep-belief-network is not compatible with tensorflow-2.0.0, change to tensorflow-1.15.5
+2026-06-17 17:03:38,256 - INFO - Checking deep-belief-network is compatible with tensorflow1.15.5?...
+2026-06-17 17:03:54,713 - INFO - deep-belief-network is compatible with tensorflow1.15.5
+2026-06-17 17:04:04,310 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:04:04,310 - INFO - Time cost: 139.81215810775757 s

@@ -1,0 +1,9 @@
+2026-06-17 16:33:24,758 - INFO - *************Upgrade tensorboardx from 2.2 to 2.6 in DeepMosaics*************
+2026-06-17 16:33:24,759 - INFO - Checking DeepMosaics is compatible with tensorboardx2.6?...
+2026-06-17 16:33:25,160 - INFO - DeepMosaics is compatible with tensorboardx2.6
+2026-06-17 16:33:30,086 - INFO - Checking tensorboardx2.6 is compatible with protobuf3.20.3?...
+2026-06-17 16:33:30,087 - INFO - tensorboardx2.6 is compatible with protobuf3.20.3
+2026-06-17 16:33:30,087 - INFO - Checking DeepMosaics is compatible with protobuf3.20.3?...
+2026-06-17 16:33:30,088 - INFO - DeepMosaics is compatible with protobuf3.20.3
+2026-06-17 16:33:30,663 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:33:30,663 - INFO - Time cost: 5.907285451889038 s

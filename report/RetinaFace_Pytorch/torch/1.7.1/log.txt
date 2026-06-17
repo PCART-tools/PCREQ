@@ -1,0 +1,7 @@
+2026-06-17 16:39:05,587 - INFO - *************Upgrade torch from 1.1.0 to 1.7.1 in RetinaFace_Pytorch*************
+2026-06-17 16:39:05,587 - INFO - Checking RetinaFace_Pytorch is compatible with torch1.7.1?...
+2026-06-17 16:39:08,864 - INFO - RetinaFace_Pytorch is compatible with torch1.7.1
+2026-06-17 16:39:18,726 - INFO - Checking torchvision0.3.0 is compatible with torch1.7.1?...
+2026-06-17 16:39:18,997 - INFO - torchvision0.3.0 is compatible with torch1.7.1
+2026-06-17 16:39:23,056 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:39:23,056 - INFO - Time cost: 17.472536087036133 s

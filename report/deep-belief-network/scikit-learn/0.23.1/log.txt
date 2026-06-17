@@ -1,0 +1,20 @@
+2026-06-17 17:01:25,544 - INFO - *************Upgrade scikit-learn from 0.18.1 to 0.23.1 in deep-belief-network*************
+2026-06-17 17:01:25,544 - INFO - Checking deep-belief-network is compatible with scikit-learn0.23.1?...
+2026-06-17 17:01:37,986 - INFO - deep-belief-network is not compatible with scikit-learn0.23.1-The sklearn.metrics.regression.r2_score is deprecated.
+2026-06-17 17:01:38,007 - INFO - deep-belief-network is not compatible with scikit-learn-0.23.1, change to scikit-learn-0.23.0
+2026-06-17 17:01:38,007 - INFO - Checking deep-belief-network is compatible with scikit-learn0.23.0?...
+2026-06-17 17:01:47,957 - INFO - deep-belief-network is not compatible with scikit-learn0.23.0-The sklearn.metrics.regression.r2_score is deprecated.
+2026-06-17 17:01:47,964 - INFO - deep-belief-network is not compatible with scikit-learn-0.23.0, change to scikit-learn-0.22.2
+2026-06-17 17:01:47,965 - INFO - Checking deep-belief-network is compatible with scikit-learn0.22.2?...
+2026-06-17 17:01:59,251 - INFO - deep-belief-network is not compatible with scikit-learn0.22.2-The sklearn.metrics.regression.r2_score is deprecated.
+2026-06-17 17:01:59,263 - INFO - deep-belief-network is not compatible with scikit-learn-0.22.2, change to scikit-learn-0.22.1
+2026-06-17 17:01:59,264 - INFO - Checking deep-belief-network is compatible with scikit-learn0.22.1?...
+2026-06-17 17:02:10,160 - INFO - deep-belief-network is not compatible with scikit-learn0.22.1-The sklearn.metrics.regression.r2_score is deprecated.
+2026-06-17 17:02:10,169 - INFO - deep-belief-network is not compatible with scikit-learn-0.22.1, change to scikit-learn-0.22
+2026-06-17 17:02:10,170 - INFO - Checking deep-belief-network is compatible with scikit-learn0.22?...
+2026-06-17 17:02:22,236 - INFO - deep-belief-network is not compatible with scikit-learn0.22-The sklearn.metrics.regression.r2_score is deprecated.
+2026-06-17 17:02:22,249 - INFO - deep-belief-network is not compatible with scikit-learn-0.22, change to scikit-learn-0.21.3
+2026-06-17 17:02:22,250 - INFO - Checking deep-belief-network is compatible with scikit-learn0.21.3?...
+2026-06-17 17:02:31,784 - INFO - deep-belief-network is compatible with scikit-learn0.21.3
+2026-06-17 17:02:37,110 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:02:37,110 - INFO - Time cost: 71.56832718849182 s

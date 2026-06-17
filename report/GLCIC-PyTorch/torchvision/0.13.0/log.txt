@@ -1,0 +1,9 @@
+2026-06-17 16:35:06,154 - INFO - *************Upgrade torchvision from 0.10.0 to 0.13.0 in GLCIC-PyTorch*************
+2026-06-17 16:35:06,157 - INFO - Checking GLCIC-PyTorch is compatible with torchvision0.13.0?...
+2026-06-17 16:35:07,251 - INFO - GLCIC-PyTorch is compatible with torchvision0.13.0
+2026-06-17 16:35:07,629 - INFO - Checking torchvision0.13.0 is compatible with torch1.12.0?...
+2026-06-17 16:35:16,427 - INFO - torchvision0.13.0 is compatible with torch1.12.0
+2026-06-17 16:35:16,440 - INFO - Checking GLCIC-PyTorch is compatible with torch1.12.0?...
+2026-06-17 16:35:24,801 - INFO - GLCIC-PyTorch is compatible with torch1.12.0
+2026-06-17 16:35:25,378 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 16:35:25,379 - INFO - Time cost: 19.227442026138306 s

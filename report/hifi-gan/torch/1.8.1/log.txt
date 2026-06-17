@@ -1,0 +1,9 @@
+2026-06-17 17:25:40,611 - INFO - *************Upgrade torch from 1.4.0 to 1.8.1 in hifi-gan*************
+2026-06-17 17:25:40,611 - INFO - Checking hifi-gan is compatible with torch1.8.1?...
+2026-06-17 17:25:45,518 - INFO - hifi-gan is compatible with torch1.8.1
+2026-06-17 17:25:54,265 - INFO - Checking librosa0.7.2 is compatible with soundfile0.12.1?...
+2026-06-17 17:25:54,596 - INFO - librosa0.7.2 is compatible with soundfile0.12.1
+2026-06-17 17:25:54,597 - INFO - Checking hifi-gan is compatible with soundfile0.12.1?...
+2026-06-17 17:25:54,597 - INFO - hifi-gan is compatible with soundfile0.12.1
+2026-06-17 17:25:57,256 - INFO - *************New requirements.txt has been generated!*************
+2026-06-17 17:25:57,257 - INFO - Time cost: 16.650891304016113 s
