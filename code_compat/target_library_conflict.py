@@ -298,6 +298,7 @@ def generate_full_parent_chains(lst):
     return result
 
 def full_CG(s, proj_path, target_project, target_library, start_version, target_version, start_library_path, target_library_path, target_library_call_module, proj, path, target_proj_dependency, python_version):
+    os.makedirs('./data/call_graph/', exist_ok=True)
     prefix = ""
     entry_path = None
     if target_project != proj:  #例如torchvision-torch，从目标项目为入口得到torchvision实际使用torch的api
