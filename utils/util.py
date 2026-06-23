@@ -1,4 +1,4 @@
-import os, re, ast, platform, json, logging
+import os, re, ast, platform, json, logging, shutil
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 from packaging import version
@@ -124,7 +124,14 @@ def get_library_call_module(library):
             'pytorch-lightning': 'pytorch_lightning',
             'opencv-python': 'cv2',
             'scikit-image': 'skimage',
-            'tensorboardx': 'tensorboardX'
+            'tensorboardx': 'tensorboardX',
+            'python-dateutil': 'dateutil',
+            'python-dotenv': 'dotenv',
+            'pysocks': 'socks',
+            'python-gflags': 'gflags',
+            'websocket-client': 'websocket',
+            'nvidia-ml-py3': 'pynvml',
+            'greenlet': 'greenlet',
         }
         return module_map.get(library, library)
 
@@ -190,10 +197,10 @@ class FromImport(ast.NodeVisitor):
 
 #通过解析__init__.py,把源码中的部分API路径缩短
 #缩短API路径可能会将不同文件中的API还原成相同的形式，比如A.b.f,A.c.f都还原成A.f
-def shortenPath(api_dict, library, version): #lst是传入传出参数，保存修正之后的API路径
+def shortenPath(api_dict, library, version, library_path_prefix): #lst是传入传出参数，保存修正之后的API路径
     library_call_module = get_library_call_module(library)
-    library_path = f"/dataset/lei/libraries/{library}/{library}{version}/{library_call_module}"
-    prefix = f"/dataset/lei/libraries/{library}/{library}{version}/"
+    library_path = f"{library_path_prefix}{library}/{library}{version}/{library_call_module}"
+    prefix = f"{library_path_prefix}{library}/{library}{version}/"
     new_dict = api_dict.copy()
     init_files = find_init_files(library_path)
     #py_files = get_path_by_extension(library_path, flag='.py')
@@ -363,6 +370,15 @@ def update_project_dependencies(target_proj_dependency, res):
 
 def get_library_paths(library_path_prefix, target_library, version, call_module):
     return f"{library_path_prefix}{target_library}/{target_library}{version}/{call_module}"
+
+
+def cleanup_temp_files():
+    tmp_json = "./extraction/tmp.json"
+    if os.path.exists(tmp_json):
+        try:
+            os.remove(tmp_json)
+        except OSError:
+            pass
 
 
 

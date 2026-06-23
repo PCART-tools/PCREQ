@@ -3,6 +3,8 @@ import json
 import os
 import ast, re
 import platform
+import time
+import uuid
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
@@ -67,19 +69,30 @@ def is_version_compat(proj_cons, lib_cons):
         return False
 
 def download_json(url, filename):
-    # 发送 HTTP GET 请求
-    response = requests.get(url)
-    # 确认请求成功
-    if response.status_code == 200:
-        # 将 JSON 数据加载成 Python 对象
-        data = response.json()
-        # 打开一个文件用于写入
-        with open(filename, 'w') as file:
-            # 将 Python 对象写入文件
-            json.dump(data, file, indent=4)
-        print(f"Data has been saved to {filename}")
-    else:
-        print(f"Failed to retrieve data: Status code {response.status_code}")
+    for retry in range(3):
+        try:
+            response = requests.get(url, timeout=60)
+            if response.status_code == 200:
+                data = response.json()
+                tmp_filename = f"{filename}.{uuid.uuid4().hex[:8]}.tmp"
+                with open(tmp_filename, 'w') as file:
+                    json.dump(data, file, indent=4)
+                os.replace(tmp_filename, filename)
+                print(f"Data has been saved to {filename}")
+                return
+            elif response.status_code == 404:
+                tmp_filename = f"{filename}.{uuid.uuid4().hex[:8]}.tmp"
+                with open(tmp_filename, 'w') as file:
+                    json.dump({"message": "Not Found"}, file)
+                os.replace(tmp_filename, filename)
+                return
+            else:
+                print(f"Failed to retrieve data: Status code {response.status_code}")
+                return
+        except requests.RequestException:
+            if retry < 2:
+                time.sleep(2 ** retry)
+    print(f"Failed to download {url} after 3 retries")
 
 def download_from_data(package, package_version):
     print(package)
@@ -93,7 +106,7 @@ def download_from_data(package, package_version):
     path = constraint_path_prefix + package + '/' + package + package_version
     if not os.path.exists(path):
         try:
-            os.makedirs(path)
+            os.makedirs(path, exist_ok=True)
         except OSError:
             return
     download_json(url2, path + '/' + package + '.json')
@@ -348,7 +361,7 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
                 key = re.sub(r'\[.*\]', '', i[0]).lower()
                 res[key] = i[1].replace("-", ".")
             except:
-                res[i[0]] = None
+                res[i[0].lower()] = None
             #res.append(i)  
     return res 
 
