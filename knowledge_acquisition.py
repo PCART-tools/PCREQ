@@ -738,6 +738,10 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             _keep_dist_info(target_dir, package_name, version)
             _stats["downloaded"] += 1
         else:
+            with open(target_dir + ".no_source", "w") as _:
+                pass
+            if os.path.exists(target_dir):
+                shutil.rmtree(target_dir)
             _stats["failed"] += 1
 
 
