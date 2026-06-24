@@ -962,7 +962,7 @@ if __name__ == '__main__':
                 for ver in version_ls.get(lib, {}).get(python_version, []):
                     constraint = get_library_constraint_from_metadata(lib, ver, python_version)
                     for dep in constraint:
-                        base_dep = dep.split('[')[0].lower()
+                        base_dep = dep.split('[')[0].lower().replace('_', '-')
                         if base_dep not in known_libs and base_dep not in discovered:
                             discovered.add(base_dep)
             cache = {'lib_names': lib_names_key, 'python_version': python_version,

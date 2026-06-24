@@ -37,7 +37,11 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
         condidate_version = []
         if proj_dependency not in target_library_dependency:
             try:
-                condidate_version = version_ls[proj_dependency.lower()][python_version]
+                key = proj_dependency.lower().replace('_', '-')
+                if key in version_ls and version_ls[key].get(python_version):
+                    condidate_version = version_ls[key][python_version]
+                else:
+                    condidate_version = version_ls[proj_dependency.lower()][python_version]
             except:
                 pass
             condidate_version = sorted(set(str(parse_version(v)) for v in condidate_version),
@@ -141,11 +145,14 @@ def get_compatibility_dict(available_versions, python_version):
 
 def get_new_lib(target_proj_dependency, python_version):
     new_lib_and_available_version = {}
+    norm_target = {k.lower().replace('_', '-'): v for k, v in target_proj_dependency.items()}
+    norm_new = set()
     for library in target_proj_dependency:
         constraint = get_library_constraint_from_metadata(library, target_proj_dependency[library], python_version)
         #print(constraint)
         for l in constraint:
-            if l not in target_proj_dependency.keys() and l not in new_lib_and_available_version.keys():
+            l_norm = l.lower().replace('_', '-')
+            if l_norm not in norm_target and l_norm not in norm_new:
                 with open(f"{version_path_prefix}/library_version.json", 'r') as file:
                     version_ls = json.load(file)
                 tmp = []

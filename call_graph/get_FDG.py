@@ -286,7 +286,7 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
         s = get_packname_and_cons_from_setup(library_path)
         #print(s)
         for i in s:
-            key = re.sub(r'\[.*\]', '', i[0]).lower()
+            key = re.sub(r'\[.*\]', '', i[0]).lower().replace('_', '-')
             if len(i) == 2:
                 res[key] = i[1].replace("-", ".")
             else:
@@ -358,10 +358,10 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
         #print(new_requires_dist)
         for i in new_requires_dist:
             try:
-                key = re.sub(r'\[.*\]', '', i[0]).lower()
+                key = re.sub(r'\[.*\]', '', i[0]).lower().replace('_', '-')
                 res[key] = i[1].replace("-", ".")
             except:
-                res[i[0].lower()] = None
+                res[i[0].lower().replace('_', '-')] = None
             #res.append(i)  
     return res 
 
