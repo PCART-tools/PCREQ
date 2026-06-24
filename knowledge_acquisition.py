@@ -259,13 +259,13 @@ def _select_download_urls(package_name, version, python_version):
                 if platform_ok:
                     pass
                 else:
-                    priority = 4
+                    priority = 6
             else:
                 if platform_ok:
                     if py_major == 3:
-                        priority = 5
+                        priority = 4
                     else:
-                        priority = 6
+                        priority = 5
                 else:
                     priority = 7
         elif pkg_type == "sdist":
@@ -304,12 +304,12 @@ def _build_fallback_candidates(package_name, version):
                 prio, pure, py_major = _parse_wheel_tag(fname)
                 platform_ok = ("any" in fname) or (_plat and _plat in fname)
                 if pure:
-                    candidates.append((prio if platform_ok else 4, url, True))
+                    candidates.append((prio if platform_ok else 6, url, True))
                 elif platform_ok:
                     if py_major == 3:
-                        candidates.append((5, url, True))
+                        candidates.append((4, url, True))
                     else:
-                        candidates.append((6, url, True))
+                        candidates.append((5, url, True))
                 else:
                     candidates.append((7, url, True))
             elif pkg_type == "sdist":

@@ -295,18 +295,37 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
     #从metadata中提取依赖
     metadata_path = f"{library_path_prefix}{pkg}/{pkg}{version}/{pkg}-{version}.dist-info/METADATA"
     if not os.path.exists(metadata_path):
-        try:
-            with open(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json', 'r') as file:
-                data = json.load(file)
-        except:
-            print(f"No {pkg}: {version} version constraint")
-            download_from_data(pkg, version)
+        # Fallback 1: .egg-info/requires.txt (for sdist without .dist-info)
+        egg_requires = None
+        target_dir = f"{library_path_prefix}{pkg}/{pkg}{version}/"
+        if os.path.isdir(target_dir):
+            for item in os.listdir(target_dir):
+                if item.endswith('.egg-info'):
+                    req_path = os.path.join(target_dir, item, 'requires.txt')
+                    if os.path.isfile(req_path):
+                        try:
+                            with open(req_path, 'r') as f:
+                                egg_requires = [l.strip() for l in f.read().split('\n')
+                                                if l.strip() and not l.strip().startswith('[')]
+                        except OSError:
+                            pass
+                    break
+        if egg_requires is not None:
+            requires_dist = egg_requires
+        else:
+            # Fallback 2: PyPI JSON
+            try:
+                with open(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json', 'r') as file:
+                    data = json.load(file)
+            except:
+                print(f"No {pkg}: {version} version constraint")
+                download_from_data(pkg, version)
 
-        # 提取 'requires_dist' 键的内容
-        try :
-            requires_dist = data['info']['requires_dist']
-        except:
-            requires_dist= None
+            # 提取 'requires_dist' 键的内容
+            try :
+                requires_dist = data['info']['requires_dist']
+            except:
+                requires_dist= None
     else:
         try:
             with open(metadata_path, 'r') as file:
