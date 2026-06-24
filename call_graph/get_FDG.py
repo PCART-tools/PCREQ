@@ -5,6 +5,7 @@ import ast, re
 import platform
 import time
 import uuid
+import logging
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
@@ -78,7 +79,7 @@ def download_json(url, filename):
                 with open(tmp_filename, 'w') as file:
                     json.dump(data, file, indent=4)
                 os.replace(tmp_filename, filename)
-                print(f"Data has been saved to {filename}")
+                logging.debug("Constraint saved to %s", filename)
                 return
             elif response.status_code == 404:
                 tmp_filename = f"{filename}.{uuid.uuid4().hex[:8]}.tmp"
@@ -87,15 +88,15 @@ def download_json(url, filename):
                 os.replace(tmp_filename, filename)
                 return
             else:
-                print(f"Failed to retrieve data: Status code {response.status_code}")
+                logging.warning("Failed to retrieve constraint: HTTP %s", response.status_code)
                 return
         except requests.RequestException:
             if retry < 2:
                 time.sleep(2 ** retry)
-    print(f"Failed to download {url} after 3 retries")
+    logging.error("Failed to download constraint after 3 retries: %s", url)
 
 def download_from_data(package, package_version):
-    print(package)
+    logging.debug("Downloading constraint data for %s", package)
     url = 'https://pypi.tuna.tsinghua.edu.cn/pypi/' + package  +'/json'
     #print(url)
     #package_versions = ["1.2.0"]
@@ -318,7 +319,7 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
                 with open(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json', 'r') as file:
                     data = json.load(file)
             except:
-                print(f"No {pkg}: {version} version constraint")
+                logging.debug("No constraint JSON for %s==%s, downloading", pkg, version)
                 download_from_data(pkg, version)
 
             # 提取 'requires_dist' 键的内容

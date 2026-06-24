@@ -932,8 +932,12 @@ if __name__ == '__main__':
     for h in logging.getLogger().handlers:
         if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
             h.setLevel(logging.WARNING)
-    logging.info("=== Build: %s | %s %s->%s | py%s ===",
-                 target_project, target_library, start_version, target_version, python_version)
+    _run_id = uuid.uuid4().hex[:8]
+    _error_breakdown = {}  # lib → set of failed versions
+    _phase_start_time = time.time()
+    logging.info("=== Build: %s | %s %s->%s | py%s | run=%s ===",
+                 target_project, target_library, start_version, target_version,
+                 python_version, _run_id)
 
     fake_start_proj_dependency = get_proj_dependency_from_requirements(start_requirements_path)
     start_proj_dependency = {}
@@ -953,7 +957,9 @@ if __name__ == '__main__':
     # Phase 1: download source and constraint data for each compatible version
     try:
         # Phase 1: download source and constraint data for each compatible version
-        for pkg in sorted(all_packages):
+        logging.info("Phase 1: downloading %d packages", len(all_packages))
+        pkg_total = len(all_packages)
+        for pkg_idx, pkg in enumerate(sorted(all_packages)):
             compatible_versions = get_compatible_versions(pkg, python_version)
             for ver in compatible_versions:
                 if not os.path.exists(f"{constraint_path_prefix}{pkg}/{pkg}{ver}/{pkg}.json"):
@@ -964,8 +970,21 @@ if __name__ == '__main__':
                     _stats["crashed"] += 1
                     logging.exception("download_pypi_source crashed for %s==%s", pkg, ver)
             _write_library_version(pkg, python_version, compatible_versions)
+            if (pkg_idx + 1) % 10 == 0 or pkg_idx == pkg_total - 1:
+                logging.info("Phase 1 progress: %d/%d packages | dl:%d fail:%d skip:%d",
+                             pkg_idx + 1, pkg_total, _stats["downloaded"],
+                             _stats["failed"], _stats["skipped"])
+
+        _phase_start_time = time.time()
+        logging.info("Phase 1 complete: %d packages | dl:%d fail:%d skip:%d crash:%d | %.0fs",
+                     pkg_total, _stats["downloaded"], _stats["failed"],
+                     _stats["skipped"], _stats["crashed"],
+                     time.time() - _phase_start_time)
 
         # Phase 2: transitive dependency discovery (cached per library_version.json state)
+        _phase_start_time = time.time()
+        logging.info("Phase 2: discovering transitive dependencies from %d known libs",
+                     len(all_packages))
         try:
             with open(f"{version_path_prefix}library_version.json", 'r') as file:
                 version_ls = json.load(file)
@@ -1004,7 +1023,7 @@ if __name__ == '__main__':
             os.replace(tmp_cache, discovery_cache)
         # Download and register newly discovered libraries
         for dep in discovered:
-            print(f"Discovered transitive dependency: {dep}")
+            logging.info("Discovered transitive dependency: %s", dep)
             compatible_versions = get_compatible_versions(dep, python_version)
             if not compatible_versions:
                 continue
@@ -1044,9 +1063,13 @@ if __name__ == '__main__':
                 os.replace(tmp_path, lv_path)
                 all_packages.add(dep)
             else:
-                print(f"  Skipping {dep} (binary-only, no source distribution)")
+                logging.info("Skipping %s (binary-only, no source distribution)", dep)
+
+        logging.info("Phase 2 complete: discovered %d transitive deps | %.0fs",
+                     len(discovered), time.time() - _phase_start_time)
 
         # Phase 3: build available_versions and extract APIs
+        _phase_start_time = time.time()
         available_version = get_available_version(FDG, sub_graph, python_version, target_proj_dependency, target_library, target_version)
         available_version[target_library].append(start_version)
 
@@ -1076,21 +1099,33 @@ if __name__ == '__main__':
         for lib in all_library:
             for ver in available_version.get(lib, []):
                 if not os.path.exists(f"{api_path_prefix}{lib}/{ver}.json"):
-                    print(f"Extracting Knowledge-{lib}-{ver}")
+                    logging.info("Queued extraction task: %s==%s", lib, ver)
                     tasks.append((lib, ver))
+        pool_size = min(20, cpu_count())
+        logging.info("Phase 3: extracting APIs | %d libs, %d tasks, pool=%d workers",
+                     len(all_library), len(tasks), pool_size)
+        _task_total = len(tasks)
+        _task_done = 0
+        _task_fail = 0
         sys.setrecursionlimit(5000)
         cleanup_temp_files()
-        with Pool(processes=min(20, cpu_count())) as pool:
+        with Pool(processes=pool_size) as pool:
             for _lib, _ver, ok in pool.map(task, tasks):
+                _task_done += 1
                 if not ok:
+                    _task_fail += 1
                     _stats["crashed"] += 1
+                if _task_done % 50 == 0 or _task_done == _task_total:
+                    logging.info("Phase 3 progress: %d/%d tasks | fail:%d | %.0fs",
+                                 _task_done, _task_total, _task_fail,
+                                 time.time() - _phase_start_time)
 
-        print("Build complete: %d downloaded, %d failed, %d skipped, %d crashed"
-              % (_stats["downloaded"], _stats["failed"], _stats["skipped"],
-                 _stats["crashed"]))
-        logging.info("Build complete: %d downloaded, %d failed, %d skipped, %d crashed",
+        logging.info("Phase 3 complete: %d tasks | ok:%d fail:%d | %.0fs",
+                     _task_total, _task_total - _task_fail, _task_fail,
+                     time.time() - _phase_start_time)
+        logging.info("Build complete: %d downloaded, %d failed, %d skipped, %d crashed | run=%s",
                      _stats["downloaded"], _stats["failed"], _stats["skipped"],
-                     _stats["crashed"])
+                     _stats["crashed"], _run_id)
     except BaseException:
         try:
             kb_report_generate(knowledge_path)
