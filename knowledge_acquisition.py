@@ -252,6 +252,9 @@ def _select_download_urls(package_name, version, python_version):
             continue
         if filename.endswith((".exe", ".msi", ".dmg", ".rpm", ".deb")):
             continue
+        # Skip Python 2 wheels (cp2*/py2*), but not universal py2.py3
+        if pkg_type == "bdist_wheel" and ('cp2' in filename or 'py2' in filename) and 'py2.py3' not in filename:
+            continue
         if pkg_type == "bdist_wheel":
             priority, is_pure, py_major = _parse_wheel_tag(filename)
             platform_ok = ("any" in filename) or (plat_tag and plat_tag in filename)
@@ -420,8 +423,8 @@ def _install_source(target_dir, extract_dir, call_module):
         if whitelist:
             mod = item[:-3] if item.endswith(".py") else item
             # Normalize hyphen/underscore (PyPI name vs import name)
-            mod_norm = mod.replace("-", "_")
-            wl_norm = {w.replace("-", "_") for w in whitelist}
+            mod_norm = mod.lower().replace("-", "_")
+            wl_norm = {w.lower().replace("-", "_") for w in whitelist}
             return mod_norm in wl_norm
         return True
 
@@ -448,12 +451,36 @@ def _install_source(target_dir, extract_dir, call_module):
                     any_moved = True
                 except OSError:
                     pass
+            elif os.path.isdir(src) and whitelist and item in whitelist:
+                # PEP 420 namespace package: no __init__.py but in whitelist
+                os.makedirs(dst, exist_ok=True)
+                for sub_item in os.listdir(src):
+                    s_src = os.path.join(src, sub_item)
+                    s_dst = os.path.join(dst, sub_item)
+                    try:
+                        shutil.move(s_src, s_dst)
+                    except OSError:
+                        pass
+                any_moved = True
             elif os.path.isfile(src) and item.endswith(".py") and item != "setup.py":
                 try:
                     shutil.move(src, dst)
                     any_moved = True
                 except OSError:
                     pass
+        # Fallback: recursively find .py files in non-package subdirs
+        if not any_moved:
+            for root, dirs, files in os.walk(source_dir):
+                for f in files:
+                    if f.endswith(".py") and f != "setup.py":
+                        src_f = os.path.join(root, f)
+                        dst_f = os.path.join(target_dir, os.path.relpath(src_f, source_dir))
+                        os.makedirs(os.path.dirname(dst_f), exist_ok=True)
+                        try:
+                            shutil.copy2(src_f, dst_f)
+                            any_moved = True
+                        except OSError:
+                            pass
         return any_moved
 
     if has_src_layout:
