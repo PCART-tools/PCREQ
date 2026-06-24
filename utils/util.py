@@ -10,6 +10,26 @@ if (platform.system() == 'Windows'):
 else:
     slash = r"/"
 
+
+def norm_pkg(name):
+    """PEP 503 package name normalization: lowercase, underscores to hyphens."""
+    return name.lower().replace('_', '-')
+
+
+def resolve_pkg_dir(pkg, *prefixes):
+    """Return the directory name for *pkg*, trying PEP 503 norm first, then
+    underscore fallback when an old-KB directory exists under any of *prefixes*.
+    """
+    norm = norm_pkg(pkg)
+    alt = pkg.lower().replace('-', '_')
+    if alt == norm:
+        return norm
+    for prefix in prefixes:
+        if os.path.isdir(f"{prefix}{alt}/") or os.path.isdir(f"{prefix}{alt}"):
+            return alt
+    return norm
+
+
 def get_path_by_extension(root_dir, flag='.py'):
     paths = []
     for root, dirs, files in os.walk(root_dir):
@@ -199,8 +219,9 @@ class FromImport(ast.NodeVisitor):
 #缩短API路径可能会将不同文件中的API还原成相同的形式，比如A.b.f,A.c.f都还原成A.f
 def shortenPath(api_dict, library, version, library_path_prefix): #lst是传入传出参数，保存修正之后的API路径
     library_call_module = get_library_call_module(library)
-    library_path = f"{library_path_prefix}{library}/{library}{version}/{library_call_module}"
-    prefix = f"{library_path_prefix}{library}/{library}{version}/"
+    norm_lib = resolve_pkg_dir(library, library_path_prefix)
+    library_path = f"{library_path_prefix}{norm_lib}/{norm_lib}{version}/{library_call_module}"
+    prefix = f"{library_path_prefix}{norm_lib}/{norm_lib}{version}/"
     new_dict = api_dict.copy()
     init_files = find_init_files(library_path)
     #py_files = get_path_by_extension(library_path, flag='.py')
@@ -369,7 +390,8 @@ def update_project_dependencies(target_proj_dependency, res):
     return target_proj_dependency
 
 def get_library_paths(library_path_prefix, target_library, version, call_module):
-    return f"{library_path_prefix}{target_library}/{target_library}{version}/{call_module}"
+    norm_lib = resolve_pkg_dir(target_library, library_path_prefix)
+    return f"{library_path_prefix}{norm_lib}/{norm_lib}{version}/{call_module}"
 
 
 def cleanup_temp_files():

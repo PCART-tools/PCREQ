@@ -218,7 +218,8 @@ def _parse_wheel_tag(filename):
 
 def _select_download_urls(package_name, version, python_version):
     """Return priority-sorted download URLs from version constraint JSON."""
-    json_path = f"{constraint_path_prefix}{package_name}/{package_name}{version}/{package_name}.json"
+    norm_name = norm_pkg(package_name)
+    json_path = f"{constraint_path_prefix}{norm_name}/{norm_name}{version}/{norm_name}.json"
     if not os.path.exists(json_path):
         return []
     try:
@@ -550,7 +551,7 @@ def _merge_core_namespace(target_dir, call_module):
 
 def _keep_dist_info(target_dir, package_name, version):
     """Verify .dist-info/ is preserved for METADATA access."""
-    dist_dir = os.path.join(target_dir, f"{package_name}-{version}.dist-info")
+    dist_dir = os.path.join(target_dir, f"{norm_pkg(package_name)}-{version}.dist-info")
     return os.path.isdir(dist_dir)
 
 
@@ -618,7 +619,8 @@ def _detect_call_module(target_dir, fallback):
 # ---------------------------------------------------------------------------
 
 def download_pypi_source(package_name, version=None, python_version="3.7", output_dir="."):
-    target_dir = f"{library_path_prefix}{package_name}/{package_name}{version}"
+    norm_name = norm_pkg(package_name)
+    target_dir = f"{library_path_prefix}{norm_name}/{norm_name}{version}"
     call_module = get_library_call_module(package_name)
 
     call_path = os.path.join(target_dir, call_module)
@@ -772,9 +774,10 @@ def _write_library_version(pkg, python_version, compatible_versions):
                 data = json.load(f)
         else:
             data = {}
-        if pkg not in data:
-            data[pkg] = {}
-        data[pkg][python_version] = compatible_versions
+        norm_pkg_name = norm_pkg(pkg)
+        if norm_pkg_name not in data:
+            data[norm_pkg_name] = {}
+        data[norm_pkg_name][python_version] = compatible_versions
         tmp_path = f"{lv_path}.{uuid.uuid4().hex[:8]}.tmp"
         try:
             with open(tmp_path, "w") as f:
@@ -826,7 +829,8 @@ def _get_all_modules(target_dir, lib):
 
 
 def extract_fine_grained_knowledge(lib, version):
-    target_dir = f"{library_path_prefix}{lib}/{lib}{version}"
+    norm_lib = resolve_pkg_dir(lib, library_path_prefix)
+    target_dir = f"{library_path_prefix}{norm_lib}/{norm_lib}{version}"
     all_modules = _get_all_modules(target_dir, lib)
 
     merged = {"functions": {}, "classes": {}, "methods": {},
@@ -872,8 +876,9 @@ def extract_fine_grained_knowledge(lib, version):
 
     if not merged["modules"] and not merged["functions"] and not merged["classes"]:
         return
-    os.makedirs(f"{api_path_prefix}{lib}/", exist_ok=True)
-    out_path = f"{api_path_prefix}{lib}/{version}.json"
+    norm_lib = resolve_pkg_dir(lib, api_path_prefix)
+    os.makedirs(f"{api_path_prefix}{norm_lib}/", exist_ok=True)
+    out_path = f"{api_path_prefix}{norm_lib}/{version}.json"
     tmp_path = f"{out_path}.{uuid.uuid4().hex[:8]}.tmp"
     with open(tmp_path, "w") as f:
         json.dump(merged, f)
@@ -962,7 +967,8 @@ if __name__ == '__main__':
         for pkg_idx, pkg in enumerate(sorted(all_packages)):
             compatible_versions = get_compatible_versions(pkg, python_version)
             for ver in compatible_versions:
-                if not os.path.exists(f"{constraint_path_prefix}{pkg}/{pkg}{ver}/{pkg}.json"):
+                norm_pkg_name = norm_pkg(pkg)
+                if not os.path.exists(f"{constraint_path_prefix}{norm_pkg_name}/{norm_pkg_name}{ver}/{norm_pkg_name}.json"):
                     download_from_data(pkg, ver)
                 try:
                     download_pypi_source(pkg, ver, python_version)
@@ -1094,11 +1100,13 @@ if __name__ == '__main__':
                 all_library.append(dep)
 
         for lib in all_library:
-            os.makedirs(f"{api_path_prefix}{lib}/", exist_ok=True)
+            norm_lib = resolve_pkg_dir(lib, api_path_prefix)
+            os.makedirs(f"{api_path_prefix}{norm_lib}/", exist_ok=True)
         tasks = []
         for lib in all_library:
+            norm_lib = resolve_pkg_dir(lib, api_path_prefix)
             for ver in available_version.get(lib, []):
-                if not os.path.exists(f"{api_path_prefix}{lib}/{ver}.json"):
+                if not os.path.exists(f"{api_path_prefix}{norm_lib}/{ver}.json"):
                     logging.info("Queued extraction task: %s==%s", lib, ver)
                     tasks.append((lib, ver))
         pool_size = min(20, cpu_count())

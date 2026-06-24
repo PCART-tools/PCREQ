@@ -8,6 +8,14 @@ constraint_path_prefix = ""
 version_path_prefix = ""
 api_path_prefix = ""
 
+
+def _ver_lookup(version_ls, pkg, python_version):
+    """3-step lookup: PEP 503 norm → original → reverse, for KB compat."""
+    for key in (norm_pkg(pkg), pkg.lower(), pkg.lower().replace('-', '_')):
+        if key in version_ls and version_ls[key].get(python_version):
+            return version_ls[key]
+    return None
+
 def setup_path_4(library_path_prefix_pass, constraint_path_prefix_pass, version_path_prefix_pass, api_path_prefix_pass):
     global library_path_prefix, constraint_path_prefix, version_path_prefix, api_path_prefix
     library_path_prefix = library_path_prefix_pass
@@ -37,11 +45,9 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
         condidate_version = []
         if proj_dependency not in target_library_dependency:
             try:
-                key = proj_dependency.lower().replace('_', '-')
-                if key in version_ls and version_ls[key].get(python_version):
-                    condidate_version = version_ls[key][python_version]
-                else:
-                    condidate_version = version_ls[proj_dependency.lower()][python_version]
+                entry = _ver_lookup(version_ls, proj_dependency, python_version)
+                if entry is not None:
+                    condidate_version = entry[python_version]
             except:
                 pass
             condidate_version = sorted(set(str(parse_version(v)) for v in condidate_version),
@@ -62,9 +68,10 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
                 condidate_version.append(target_ver_norm)
                 flag = True
             else:
+                ver_entry = _ver_lookup(version_ls, proj_dependency, python_version)
                 in_full_kb = any(
                     str(parse_version(v)) == target_ver_norm
-                    for v in version_ls.get(proj_dependency.lower(), {}).get(python_version, [])
+                    for v in (ver_entry.get(python_version, []) if ver_entry else [])
                 )
                 if in_full_kb:
                     condidate_version.append(target_ver_norm)
@@ -73,12 +80,16 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
                 flag = True
         else:
             try:
-                for version in version_ls[proj_dependency][python_version]:
+                ver_entry = _ver_lookup(version_ls, proj_dependency, python_version)
+                if ver_entry is None:
+                    raise KeyError(proj_dependency)
+                for version in ver_entry[python_version]:
                     try:                    #在目标库起始版本的约束中，但是不在目标版本的约束中
                         if is_version_compat(version, target_library_constraint[proj_dependency]):
                             condidate_version.append(str(parse_version(version)))
                     except:
-                        condidate_version = [str(parse_version(v)) for v in version_ls[proj_dependency][python_version]]
+                        ver_entry = _ver_lookup(version_ls, proj_dependency, python_version)
+                        condidate_version = [str(parse_version(v)) for v in (ver_entry.get(python_version, []) if ver_entry else [])]
                         break
             except:
                 pass
@@ -125,7 +136,8 @@ def get_compatibility_dict(available_versions, python_version):
                 for l in constraint:
                     #print(f"{library}-{version}, {l}, {constraint[l]}")
                     if l in available_versions.keys() and python_version in version_ls.get(l, {}):
-                        vls_vers = set(str(parse_version(v)) for v in version_ls[l][python_version])
+                        ver_entry = _ver_lookup(version_ls, l, python_version)
+                        vls_vers = set(str(parse_version(v)) for v in (ver_entry.get(python_version, []) if ver_entry else []))
                         av_vers = set(available_versions[l])
                         all_vers = av_vers | vls_vers
                         if constraint[l] is not None and constraint[l] != "none":
@@ -152,13 +164,16 @@ def get_new_lib(target_proj_dependency, python_version):
         #print(constraint)
         for l in constraint:
             l_norm = l.lower().replace('_', '-')
-            if l_norm not in norm_target and l_norm not in norm_new:
+            if l_norm not in norm_target and l_norm not in norm_new and l not in new_lib_and_available_version:
                 with open(f"{version_path_prefix}/library_version.json", 'r') as file:
                     version_ls = json.load(file)
                 tmp = []
                 try:
                     flag = False
-                    for v in version_ls[l][python_version]:
+                    ver_entry = _ver_lookup(version_ls, l, python_version)
+                    if ver_entry is None:
+                        continue
+                    for v in ver_entry.get(python_version, []):
                         try:
                             v_norm = str(parse_version(v))
                         except Exception:

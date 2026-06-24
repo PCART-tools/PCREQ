@@ -28,10 +28,11 @@ def resolve_conflict(start_proj_dependency, target_proj_dependency, sub_graph, c
         if start_proj_dependency[library] != target_proj_dependency[library]:
             #print(start_proj_dependency, target_proj_dependency)
             library_call_module = get_library_call_module(library)
-            
-            start_path = library_path_prefix + library + slash + library + start_proj_dependency[library] + slash + library_call_module
+            norm_lib = resolve_pkg_dir(library, library_path_prefix)
+
+            start_path = library_path_prefix + norm_lib + slash + norm_lib + start_proj_dependency[library] + slash + library_call_module
             #print(start_path)
-            target_path = library_path_prefix + library + slash + library + target_proj_dependency[library] + slash + library_call_module
+            target_path = library_path_prefix + norm_lib + slash + norm_lib + target_proj_dependency[library] + slash + library_call_module
             #print(target_path)
             #获得与library冲突的库conflict_library
             conflict_library, compatibility_info = is_non_target_library_code_conflict(target_proj_dependency, proj_path, target_project, library, start_proj_dependency[library], target_proj_dependency[library], start_path, target_path, library_call_module, compatibility_info, python_version)
@@ -55,7 +56,7 @@ def resolve_conflict(start_proj_dependency, target_proj_dependency, sub_graph, c
                     
                     for candi_ver in candi_versions:
                         #compatibility_info = update_compatibility_info(target_project, library, candi_ver, start_proj_dependency[library], target_proj_dependency[library], start_path, target_path, library_call_module, compatibility_info, target_project, proj_path, target_proj_dependency)
-                        library_target_path = library_path_prefix + library + slash + library + candi_ver + slash + library_call_module
+                        library_target_path = library_path_prefix + norm_lib + slash + norm_lib + candi_ver + slash + library_call_module
                         compatibility_info = update_compatibility_info(target_project, library, "1", start_proj_dependency[library], candi_ver, start_path, library_target_path, library_call_module, compatibility_info, target_project, proj_path, target_proj_dependency, python_version)
                         if compatibility_info[tuple(sorted([(target_project, "1"), (library, candi_ver)]))]:
                             new_available_versions = available_versions.copy()
@@ -77,9 +78,10 @@ def resolve_conflict(start_proj_dependency, target_proj_dependency, sub_graph, c
             elif conflict_library is not None:
                 if library == target_library:   #torchvision与pillow存在冲突，且pillow为目标库，则修改torchvision的版本
                     conflict_library_call_module = get_library_call_module(conflict_library)
-                    
-                    conflict_start_path = library_path_prefix + conflict_library + slash + conflict_library + start_proj_dependency[conflict_library] + slash + conflict_library_call_module
-                    conflict_target_path = library_path_prefix + conflict_library + slash + conflict_library + target_proj_dependency[conflict_library] + slash + conflict_library_call_module
+                    norm_conf_lib = resolve_pkg_dir(conflict_library, library_path_prefix)
+
+                    conflict_start_path = library_path_prefix + norm_conf_lib + slash + norm_conf_lib + start_proj_dependency[conflict_library] + slash + conflict_library_call_module
+                    conflict_target_path = library_path_prefix + norm_conf_lib + slash + norm_conf_lib + target_proj_dependency[conflict_library] + slash + conflict_library_call_module
 
                     available_versions = get_available_version(FDG, sub_graph, python_version, target_proj_dependency, library, target_proj_dependency[library])
 
@@ -129,7 +131,7 @@ def resolve_conflict(start_proj_dependency, target_proj_dependency, sub_graph, c
                     tpls_depend_on_library = get_libraries_depending_on_targetlibrary(target_proj_dependency, library, python_version)
 
                     for candi_ver in candi_versions:
-                        library_target_path = library_path_prefix + library + slash + library + candi_ver + slash + library_call_module
+                        library_target_path = library_path_prefix + norm_lib + slash + norm_lib + candi_ver + slash + library_call_module
                         #print(f"{library}-{candi_ver}")
                         is_all_compat = True
                         for tpl in tpls_depend_on_library:
@@ -163,9 +165,10 @@ def resolve_conflict(start_proj_dependency, target_proj_dependency, sub_graph, c
                     
                     if flag == False:   #目标库为matplotlib，检测到torchvision与Pillow存在冲突。修改pillow的版本不可解，修改torchvision的版本
                         conflict_library_call_module = get_library_call_module(conflict_library)
-                        
-                        conflict_start_path = library_path_prefix + conflict_library + slash + conflict_library + start_proj_dependency[conflict_library] + slash + conflict_library_call_module
-                        conflict_target_path = library_path_prefix + conflict_library + slash + conflict_library + target_proj_dependency[conflict_library] + slash + conflict_library_call_module
+                        norm_conf_lib = resolve_pkg_dir(conflict_library, library_path_prefix)
+
+                        conflict_start_path = library_path_prefix + norm_conf_lib + slash + norm_conf_lib + start_proj_dependency[conflict_library] + slash + conflict_library_call_module
+                        conflict_target_path = library_path_prefix + norm_conf_lib + slash + norm_conf_lib + target_proj_dependency[conflict_library] + slash + conflict_library_call_module
 
                         available_versions = get_available_version(FDG, sub_graph, python_version, target_proj_dependency, target_library, target_proj_dependency[target_library])
                         #print(available_versions)

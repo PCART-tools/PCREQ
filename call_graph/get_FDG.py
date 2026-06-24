@@ -8,6 +8,7 @@ import uuid
 import logging
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
+from utils.util import norm_pkg, resolve_pkg_dir
 
 if (platform.system() == 'Windows'):
     slash = "\\"
@@ -277,10 +278,32 @@ def get_packname_and_cons_from_setup(librarypath):
 
     return res
 
+
+def _resolve_pkg_dir(pkg):
+    return resolve_pkg_dir(pkg, constraint_path_prefix, library_path_prefix)
+
+
+def _try_read_constraint_json(pkg, version):
+    """Try to read constraint JSON using both PEP 503 and underscore namings.
+    Returns (data, None) on success, or (None, None) if neither found."""
+    norm_name = norm_pkg(pkg)
+    alt_name = pkg.lower().replace('-', '_')
+    for name in (norm_name, alt_name):
+        json_path = f"{constraint_path_prefix}{name}/{name}{version}/{name}.json"
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, 'r') as file:
+                    return json.load(file), None
+            except (json.JSONDecodeError, OSError):
+                continue
+    return None, None
+
+
 def get_library_constraint_from_metadata(pkg, version, python_version):
     res = {}
+    norm_pkg_name = _resolve_pkg_dir(pkg)
     #从setup.py中提取依赖
-    library_path = f"{library_path_prefix}{pkg}/{pkg}{version}/{pkg}"
+    library_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{version}/{norm_pkg_name}"
     if not os.path.exists(library_path):
         pass
     else:
@@ -294,11 +317,11 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
                 res[key] = None
     #print(res)
     #从metadata中提取依赖
-    metadata_path = f"{library_path_prefix}{pkg}/{pkg}{version}/{pkg}-{version}.dist-info/METADATA"
+    metadata_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{version}/{norm_pkg_name}-{version}.dist-info/METADATA"
     if not os.path.exists(metadata_path):
         # Fallback 1: .egg-info/requires.txt (for sdist without .dist-info)
         egg_requires = None
-        target_dir = f"{library_path_prefix}{pkg}/{pkg}{version}/"
+        target_dir = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{version}/"
         if os.path.isdir(target_dir):
             for item in os.listdir(target_dir):
                 if item.endswith('.egg-info'):
@@ -314,19 +337,16 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
         if egg_requires is not None:
             requires_dist = egg_requires
         else:
-            # Fallback 2: PyPI JSON
-            try:
-                with open(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json', 'r') as file:
-                    data = json.load(file)
-            except:
-                logging.debug("No constraint JSON for %s==%s, downloading", pkg, version)
-                download_from_data(pkg, version)
-
-            # 提取 'requires_dist' 键的内容
-            try :
-                requires_dist = data['info']['requires_dist']
-            except:
-                requires_dist= None
+            # Fallback 2: PyPI JSON (try both PEP 503 and underscore namings)
+            data, _ = _try_read_constraint_json(pkg, version)
+            if data is not None:
+                try:
+                    requires_dist = data['info']['requires_dist']
+                except (KeyError, TypeError):
+                    requires_dist = None
+            else:
+                logging.debug("No constraint JSON for %s==%s", pkg, version)
+                requires_dist = None
     else:
         try:
             with open(metadata_path, 'r') as file:
@@ -342,19 +362,15 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
     #print(requires_dist)
     
     if requires_dist is None or len(requires_dist) == 0:
-        try:
-            with open(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json', 'r') as file:
-                data = json.load(file)
-            #print(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json')
-        except:
+        data, _ = _try_read_constraint_json(pkg, version)
+        if data is not None:
+            try:
+                requires_dist = data['info']['requires_dist']
+            except (KeyError, TypeError):
+                requires_dist = None
+        else:
             print(f"No {pkg}: {version} version constraint")
-            download_from_data(pkg, version)
-
-        # 提取 'requires_dist' 键的内容
-        try :
-            requires_dist = data['info']['requires_dist']
-        except:
-            requires_dist= None
+            requires_dist = None
     #print(requires_dist)
                      
     if requires_dist is not None:

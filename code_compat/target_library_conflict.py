@@ -3,7 +3,7 @@ from extraction.lib_module_and_package_extraction import get_python_modules_and_
 from extraction.getCall import get_all_used_api
 from call_graph.engine import main as cfmain
 from .library_version_change import get_version_change
-from utils.util import extract_function_defs_from_file, extract_classes_from_file, get_library_call_module, shortenPath
+from utils.util import extract_function_defs_from_file, extract_classes_from_file, get_library_call_module, shortenPath, resolve_pkg_dir
 from extraction.library_api_and_module import extract_from_directory
 from extraction.get_attribute_from_proj import get_attributes_from_file
 from call_graph.get_FDG import get_FDG_from_requirements
@@ -510,9 +510,10 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
     return apis_full_name, api_to_examine
 
 def get_all_library_info(library_path, library_call_module, version, lib):
-    json_file_path = f"{api_path_prefix}{lib}/{version}.json"
-    if not os.path.exists(f"{api_path_prefix}{lib}"):
-        os.makedirs(f"{api_path_prefix}{lib}", exist_ok=True)
+    norm_lib = resolve_pkg_dir(lib, api_path_prefix)
+    json_file_path = f"{api_path_prefix}{norm_lib}/{version}.json"
+    if not os.path.exists(f"{api_path_prefix}{norm_lib}"):
+        os.makedirs(f"{api_path_prefix}{norm_lib}", exist_ok=True)
     if not os.path.exists(json_file_path):
         res = extract_from_directory(library_path)
         dir = get_python_modules_and_packages_from_dir(library_path, library_call_module)
