@@ -428,6 +428,8 @@ def _install_source(target_dir, extract_dir, call_module):
 
     src_dir = os.path.join(extract_dir, "src")
     has_src_layout = os.path.isdir(src_dir)
+    lib_dir = os.path.join(extract_dir, "lib")
+    has_lib_layout = os.path.isdir(lib_dir)
 
     def _should_move(item):
         if item.startswith("."):
@@ -495,6 +497,8 @@ def _install_source(target_dir, extract_dir, call_module):
                             pass
         return any_moved
 
+    if has_lib_layout:
+        _move_items(lib_dir)
     if has_src_layout:
         _move_items(src_dir)
     moved = _move_items(extract_dir)
@@ -502,6 +506,9 @@ def _install_source(target_dir, extract_dir, call_module):
     # top_level.txt whitelist may fail when import name differs from
     # directory name (e.g. "cv2" vs "opencv_python").  Fall back.
     if whitelist and not moved:
+        if has_lib_layout:
+            whitelist = None
+            _move_items(lib_dir)
         if has_src_layout:
             whitelist = None
             _move_items(src_dir)
@@ -583,14 +590,14 @@ def _read_top_level_txt(target_dir, package_name):
         if d.endswith(".dist-info"):
             tl_path = os.path.join(target_dir, d, "top_level.txt")
             if not os.path.isfile(tl_path):
-                break
+                continue
             try:
                 with open(tl_path) as f:
                     entries = [l.strip() for l in f if l.strip()]
             except OSError:
-                break
+                continue
             if not entries:
-                break
+                continue
             if len(entries) == 1:
                 return entries[0]
             norm_pkg = package_name.replace("-", "_")
@@ -607,11 +614,25 @@ def _read_top_level_txt(target_dir, package_name):
 
 
 def _detect_call_module(target_dir, fallback):
-    """Auto-detect module from extracted source: first __init__.py dir, then .py file."""
+    """Auto-detect module from extracted source: __init__.py dir, then matching .py file."""
     if not os.path.isdir(target_dir):
         return fallback
+    _ignore = {"tests", "test", "docs", "examples", "example",
+               "benchmarks", "benchmark", "ez_setup", "scripts", "tools"}
+    # Prefer directory whose name matches the expected package
+    _fallback_norm = fallback.replace('-', '_')
     for d in sorted(os.listdir(target_dir)):
         if d.startswith(".") or d.endswith((".dist-info", ".egg-info", ".data")):
+            continue
+        full = os.path.join(target_dir, d)
+        if os.path.isdir(full) and os.path.isfile(os.path.join(full, "__init__.py")):
+            if d.replace('-', '_') == _fallback_norm:
+                return d
+    # Any other __init__.py directory (excluding known non-module dirs)
+    for d in sorted(os.listdir(target_dir)):
+        if d.startswith(".") or d.endswith((".dist-info", ".egg-info", ".data")):
+            continue
+        if d.lower() in _ignore:
             continue
         full = os.path.join(target_dir, d)
         if os.path.isdir(full) and os.path.isfile(os.path.join(full, "__init__.py")):
@@ -621,7 +642,21 @@ def _detect_call_module(target_dir, fallback):
             continue
         full = os.path.join(target_dir, d)
         if os.path.isfile(full) and d.endswith(".py") and d != "setup.py":
-            return d[:-3]
+            name = d[:-3]
+            if name.replace('-', '_') == fallback.replace('-', '_'):
+                return name
+    # Namespace package: dir without __init__.py but containing subdirs with __init__.py
+    # (e.g., google/ has google/protobuf/__init__.py but no google/__init__.py)
+    for d in sorted(os.listdir(target_dir)):
+        if d.startswith(".") or d.endswith((".dist-info", ".egg-info", ".data")):
+            continue
+        if d.lower() in _ignore:
+            continue
+        full = os.path.join(target_dir, d)
+        if os.path.isdir(full):
+            for sub in os.listdir(full):
+                if os.path.isfile(os.path.join(full, sub, "__init__.py")):
+                    return d
     return fallback
 
 
@@ -652,14 +687,44 @@ def _init_worker():
         logging.getLogger().setLevel(logging.INFO)
 
 
+def _check_source(td, cm):
+    """Check if a Python module is already extracted in *td* under *cm* or its variants."""
+    if not os.path.isdir(td):
+        return False
+    # 1. Flat package: __init__.py directly in target_dir
+    if os.path.isfile(os.path.join(td, "__init__.py")):
+        return True
+    # 2. Try naming variants including namespace paths (zope.event → zope/event)
+    names = {cm, cm.replace('-', '_'), cm.replace('_', '-')}
+    for n in list(names):
+        names.add(n.replace('.', '/'))
+    for name in names:
+        p = os.path.join(td, name)
+        if os.path.isdir(p) or os.path.isfile(p + ".py"):
+            return True
+    # 3. Check top_level.txt for packages with different module names (e.g. cv2 ← opencv-contrib-python)
+    for d in os.listdir(td):
+        if d.endswith(".dist-info"):
+            tl = os.path.join(td, d, "top_level.txt")
+            if os.path.isfile(tl):
+                try:
+                    with open(tl) as f:
+                        for entry in f:
+                            entry = entry.strip()
+                            if entry:
+                                ep = os.path.join(td, entry)
+                                if os.path.isdir(ep) or os.path.isfile(ep + ".py"):
+                                    return True
+                except OSError:
+                    pass
+            break
+    return False
+
+
 def download_pypi_source(package_name, version=None, python_version="3.7", output_dir="."):
     norm_name = norm_pkg(package_name)
     target_dir = f"{library_path_prefix}{norm_name}/{norm_name}{version}"
     call_module = get_library_call_module(package_name)
-
-    def _check_source(td, cm):
-        p = os.path.join(td, cm)
-        return os.path.isdir(p) or os.path.isfile(p + ".py")
 
     if _check_source(target_dir, call_module):
         _stats["skipped"] += 1
@@ -783,9 +848,22 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             if not os.path.isdir(os.path.join(target_dir, call_module)) and \
                not os.path.isfile(os.path.join(target_dir, call_module + ".py")):
                 call_module = _detect_call_module(target_dir, call_module)
-            _merge_core_namespace(target_dir, call_module)
-            _keep_dist_info(target_dir, package_name, version)
-            _stats["downloaded"] += 1
+            _has_valid_module = (
+                os.path.isdir(os.path.join(target_dir, call_module)) or
+                os.path.isfile(os.path.join(target_dir, call_module + ".py")) or
+                os.path.isfile(os.path.join(target_dir, "__init__.py"))  # flat package
+            )
+            if not _has_valid_module:
+                # No valid Python module extracted (C extension or similar)
+                with open(target_dir + ".no_source", "w") as _:
+                    pass
+                if os.path.exists(target_dir):
+                    shutil.rmtree(target_dir)
+                _stats["failed"] += 1
+            else:
+                _merge_core_namespace(target_dir, call_module)
+                _keep_dist_info(target_dir, package_name, version)
+                _stats["downloaded"] += 1
         else:
             with open(target_dir + ".no_source", "w") as _:
                 pass
@@ -906,7 +984,12 @@ def extract_fine_grained_knowledge(lib, version):
                         merged["functions"][f"{call_module}.{node.name}"] = {}
                     elif isinstance(node, ast.ClassDef):
                         merged["classes"][f"{call_module}.{node.name}"] = {}
-            continue
+                continue
+            # Flat package: files directly in target_dir (e.g. imageio 0.2.3)
+            if os.path.isfile(f"{target_dir}/__init__.py"):
+                library_path = target_dir
+            else:
+                continue
 
         res = extract_from_directory(library_path)
         dir_mods = get_python_modules_and_packages_from_dir(library_path, call_module)
@@ -1043,10 +1126,13 @@ if __name__ == '__main__':
                     _stats["crashed"] += 1
                     _error_breakdown.setdefault(pkg, set()).add(ver)
                     logging.exception("download_pypi_source crashed for %s==%s", pkg, ver)
-                if n_vers >= 40 and ((ver_idx + 1) % 40 == 0 or ver_idx == n_vers - 1):
-                    logging.info("  %s: %d/%d versions | dl:%d fail:%d skip:%d",
-                                 pkg, ver_idx + 1, n_vers, _stats["downloaded"],
-                                 _stats["failed"], _stats["skipped"])
+                _dl_during = _stats["downloaded"] - _dl_before
+                _vers_total = ver_idx + 1
+                if n_vers >= 40 and _dl_during > 0 and (
+                        (_vers_total % 40 == 0 or ver_idx == n_vers - 1)):
+                    logging.info("  %s: %d/%d versions | dl:%d skip:%d",
+                                 pkg, _vers_total, n_vers, _dl_during,
+                                 _vers_total - _dl_during)
             _write_library_version(pkg, python_version, compatible_versions)
             _dl_delta = _stats["downloaded"] - _dl_before
             if _dl_delta == 0:
@@ -1105,9 +1191,11 @@ if __name__ == '__main__':
         # Download and register newly discovered libraries
         _disc_total = len(discovered)
         for _disc_idx, dep in enumerate(sorted(discovered)):
-            logging.info("Phase 2 [%d/%d]: %s", _disc_idx + 1, _disc_total, dep)
             compatible_versions = get_compatible_versions(dep, python_version)
+            n_dep_vers = len(compatible_versions)
             if not compatible_versions:
+                logging.info("Phase 2 [%d/%d]: %s — no compatible versions",
+                             _disc_idx + 1, _disc_total, dep)
                 continue
             # Check if this is a source-only or binary-only package
             pypi_url = f'https://pypi.org/pypi/{dep}/json'
@@ -1120,7 +1208,8 @@ if __name__ == '__main__':
             except requests.RequestException:
                 pass
             if has_sdist:
-                for ver in compatible_versions:
+                _dl_before = _stats["downloaded"]
+                for ver_idx, ver in enumerate(compatible_versions):
                     _dep_json = f"{constraint_path_prefix}{dep}/{dep}{ver}/{dep}.json"
                     if not os.path.exists(_dep_json):
                         _resolved_dep = resolve_pkg_dir(dep, constraint_path_prefix)
@@ -1135,6 +1224,13 @@ if __name__ == '__main__':
                     except Exception:
                         _stats["crashed"] += 1
                         logging.error("download_pypi_source crashed for %s==%s", dep, ver)
+                    _dl_during = _stats["downloaded"] - _dl_before
+                    _vers_total = ver_idx + 1
+                    if n_dep_vers >= 40 and _dl_during > 0 and (
+                            _vers_total % 40 == 0 or ver_idx == n_dep_vers - 1):
+                        logging.info("  %s: %d/%d versions | dl:%d skip:%d",
+                                     dep, _vers_total, n_dep_vers,
+                                     _dl_during, _vers_total - _dl_during)
                 try:
                     with open(f"{version_path_prefix}library_version.json", "r") as f:
                         data = json.load(f)
@@ -1155,8 +1251,16 @@ if __name__ == '__main__':
                     json.dump(data, f)
                 os.replace(tmp_path, lv_path)
                 all_packages.add(dep)
+                _dl_delta = _stats["downloaded"] - _dl_before
+                if _dl_delta == 0:
+                    logging.info("Phase 2 [%d/%d]: %s (%d versions) — cached",
+                                 _disc_idx + 1, _disc_total, dep, n_dep_vers)
+                else:
+                    logging.info("Phase 2 [%d/%d]: %s (%d versions) — %d dl",
+                                 _disc_idx + 1, _disc_total, dep, n_dep_vers, _dl_delta)
             else:
-                logging.info("Skipping %s (binary-only, no source distribution)", dep)
+                logging.info("Phase 2 [%d/%d]: %s — binary-only, skipped",
+                             _disc_idx + 1, _disc_total, dep)
 
         logging.info("Phase 2 complete: discovered %d transitive deps | %.0fs",
                      len(discovered), time.time() - _phase_start_time)
