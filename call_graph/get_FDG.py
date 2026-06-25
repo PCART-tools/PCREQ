@@ -97,21 +97,17 @@ def download_json(url, filename):
     logging.error("Failed to download constraint after 3 retries: %s", url)
 
 def download_from_data(package, package_version):
+    norm_name = norm_pkg(package)
     logging.debug("Downloading constraint data for %s", package)
-    url = 'https://pypi.tuna.tsinghua.edu.cn/pypi/' + package  +'/json'
-    #print(url)
-    #package_versions = ["1.2.0"]
-    #package_versions = fetch_package_versions(url)
-    #time.sleep(2)
-    #print(package_versions)
-    url2 = 'https://pypi.org/pypi/' + package + '/' + package_version +'/json'
-    path = constraint_path_prefix + package + '/' + package + package_version
+    url = 'https://pypi.tuna.tsinghua.edu.cn/pypi/' + norm_name + '/json'
+    url2 = 'https://pypi.org/pypi/' + norm_name + '/' + package_version + '/json'
+    path = constraint_path_prefix + norm_name + '/' + norm_name + package_version
     if not os.path.exists(path):
         try:
             os.makedirs(path, exist_ok=True)
         except OSError:
             return
-    download_json(url2, path + '/' + package + '.json')
+    download_json(url2, path + '/' + norm_name + '.json')
 
 def remove_elements_with_extra(lst):
     # 使用列表推导式过滤掉包含'docs'或'tests'的元素
