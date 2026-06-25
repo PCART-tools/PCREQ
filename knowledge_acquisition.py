@@ -68,7 +68,8 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
             try:
                 condidate_version = version_ls[proj_dependency.lower()][python_version]
             except:
-                print(proj_dependency.lower())
+                logging.warning("Package %s not found in version list for py%s",
+                                proj_dependency.lower(), python_version)
             if len(condidate_version) >= 150:
                 condidate_version = condidate_version[-150:]
             elif len(condidate_version) >= 30:
@@ -98,7 +99,8 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
                         condidate_version = version_ls[proj_dependency][python_version]
                         break
             except:
-                print(proj_dependency)
+                logging.warning("Package %s not found in version list (constrained path)",
+                                proj_dependency)
             target_ver = target_proj_dependency[proj_dependency]
             target_ver_norm = str(parse_version(target_ver))
             match_idx = None
@@ -618,6 +620,29 @@ def _detect_call_module(target_dir, fallback):
 # Download
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Multiprocessing worker logging
+# ---------------------------------------------------------------------------
+
+_worker_knowledge_path = None
+
+
+def _set_worker_knowledge_path(path):
+    global _worker_knowledge_path
+    _worker_knowledge_path = path
+
+
+def _init_worker():
+    """Configure logging for Pool worker processes."""
+    if _worker_knowledge_path:
+        log_file = os.path.join(_worker_knowledge_path, "knowledge_acquisition.log")
+        h = logging.FileHandler(log_file, mode='a')
+        h.setLevel(logging.INFO)
+        h.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logging.getLogger().addHandler(h)
+        logging.getLogger().setLevel(logging.INFO)
+
+
 def download_pypi_source(package_name, version=None, python_version="3.7", output_dir="."):
     norm_name = norm_pkg(package_name)
     target_dir = f"{library_path_prefix}{norm_name}/{norm_name}{version}"
@@ -927,22 +952,26 @@ if __name__ == '__main__':
     for p in [knowledge_path, library_path_prefix, constraint_path_prefix, api_path_prefix]:
         os.makedirs(p, exist_ok=True)
 
-    # add file logging (append across runs, INFO+ to file, WARNING+ to console)
+    # logging: INFO+ to file, WARNING+ to console
     log_file = os.path.join(knowledge_path, "knowledge_acquisition.log")
     fh = logging.FileHandler(log_file, mode='a')
     fh.setLevel(logging.INFO)
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-    logging.getLogger().addHandler(fh)
-    logging.getLogger().setLevel(logging.INFO)
-    for h in logging.getLogger().handlers:
-        if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
-            h.setLevel(logging.WARNING)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.WARNING)
+    ch.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(fh)
+    logger.addHandler(ch)
     _run_id = uuid.uuid4().hex[:8]
     _error_breakdown = {}  # lib → set of failed versions
     _phase_start_time = time.time()
-    logging.info("=== Build: %s | %s %s->%s | py%s | run=%s ===",
+    logging.info("=" * 70)
+    logging.info("Build: %s | %s %s->%s | py%s | run=%s",
                  target_project, target_library, start_version, target_version,
                  python_version, _run_id)
+    logging.info("=" * 70)
 
     fake_start_proj_dependency = get_proj_dependency_from_requirements(start_requirements_path)
     start_proj_dependency = {}
@@ -966,7 +995,9 @@ if __name__ == '__main__':
         pkg_total = len(all_packages)
         for pkg_idx, pkg in enumerate(sorted(all_packages)):
             compatible_versions = get_compatible_versions(pkg, python_version)
-            for ver in compatible_versions:
+            n_vers = len(compatible_versions)
+            _dl_before = _stats["downloaded"]
+            for ver_idx, ver in enumerate(compatible_versions):
                 norm_pkg_name = norm_pkg(pkg)
                 if not os.path.exists(f"{constraint_path_prefix}{norm_pkg_name}/{norm_pkg_name}{ver}/{norm_pkg_name}.json"):
                     download_from_data(pkg, ver)
@@ -974,18 +1005,26 @@ if __name__ == '__main__':
                     download_pypi_source(pkg, ver, python_version)
                 except Exception:
                     _stats["crashed"] += 1
+                    _error_breakdown.setdefault(pkg, set()).add(ver)
                     logging.exception("download_pypi_source crashed for %s==%s", pkg, ver)
+                if n_vers >= 40 and ((ver_idx + 1) % 40 == 0 or ver_idx == n_vers - 1):
+                    logging.info("  %s: %d/%d versions | dl:%d fail:%d skip:%d",
+                                 pkg, ver_idx + 1, n_vers, _stats["downloaded"],
+                                 _stats["failed"], _stats["skipped"])
             _write_library_version(pkg, python_version, compatible_versions)
-            if (pkg_idx + 1) % 10 == 0 or pkg_idx == pkg_total - 1:
-                logging.info("Phase 1 progress: %d/%d packages | dl:%d fail:%d skip:%d",
-                             pkg_idx + 1, pkg_total, _stats["downloaded"],
-                             _stats["failed"], _stats["skipped"])
+            _dl_delta = _stats["downloaded"] - _dl_before
+            if _dl_delta == 0:
+                logging.info("Phase 1 [%d/%d]: %s (%d versions) — cached",
+                             pkg_idx + 1, pkg_total, pkg, n_vers)
+            elif n_vers < 40:
+                logging.info("Phase 1 [%d/%d]: %s (%d versions) — %d dl",
+                             pkg_idx + 1, pkg_total, pkg, n_vers, _dl_delta)
 
-        _phase_start_time = time.time()
+        _phase1_elapsed = time.time() - _phase_start_time
         logging.info("Phase 1 complete: %d packages | dl:%d fail:%d skip:%d crash:%d | %.0fs",
                      pkg_total, _stats["downloaded"], _stats["failed"],
-                     _stats["skipped"], _stats["crashed"],
-                     time.time() - _phase_start_time)
+                     _stats["skipped"], _stats["crashed"], _phase1_elapsed)
+        _phase_start_time = time.time()
 
         # Phase 2: transitive dependency discovery (cached per library_version.json state)
         _phase_start_time = time.time()
@@ -1028,8 +1067,9 @@ if __name__ == '__main__':
                 json.dump(cache, f)
             os.replace(tmp_cache, discovery_cache)
         # Download and register newly discovered libraries
-        for dep in discovered:
-            logging.info("Discovered transitive dependency: %s", dep)
+        _disc_total = len(discovered)
+        for _disc_idx, dep in enumerate(sorted(discovered)):
+            logging.info("Phase 2 [%d/%d]: %s", _disc_idx + 1, _disc_total, dep)
             compatible_versions = get_compatible_versions(dep, python_version)
             if not compatible_versions:
                 continue
@@ -1117,12 +1157,14 @@ if __name__ == '__main__':
         _task_fail = 0
         sys.setrecursionlimit(5000)
         cleanup_temp_files()
-        with Pool(processes=pool_size) as pool:
+        _set_worker_knowledge_path(knowledge_path)
+        with Pool(processes=pool_size, initializer=_init_worker) as pool:
             for _lib, _ver, ok in pool.map(task, tasks):
                 _task_done += 1
                 if not ok:
                     _task_fail += 1
                     _stats["crashed"] += 1
+                    _error_breakdown.setdefault(_lib, set()).add(_ver)
                 if _task_done % 50 == 0 or _task_done == _task_total:
                     logging.info("Phase 3 progress: %d/%d tasks | fail:%d | %.0fs",
                                  _task_done, _task_total, _task_fail,
@@ -1131,9 +1173,18 @@ if __name__ == '__main__':
         logging.info("Phase 3 complete: %d tasks | ok:%d fail:%d | %.0fs",
                      _task_total, _task_total - _task_fail, _task_fail,
                      time.time() - _phase_start_time)
+        if _error_breakdown:
+            logging.warning("=== Error breakdown by library ===")
+            for lib in sorted(_error_breakdown):
+                vers = sorted(_error_breakdown[lib], key=parse_version)
+                logging.warning("  %s: %d versions failed: %s",
+                                lib, len(vers), ', '.join(vers[:10]))
+                if len(vers) > 10:
+                    logging.warning("    ... and %d more", len(vers) - 10)
         logging.info("Build complete: %d downloaded, %d failed, %d skipped, %d crashed | run=%s",
                      _stats["downloaded"], _stats["failed"], _stats["skipped"],
                      _stats["crashed"], _run_id)
+        logging.info("=" * 70)
     except BaseException:
         try:
             kb_report_generate(knowledge_path)
