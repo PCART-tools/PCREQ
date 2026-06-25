@@ -6,9 +6,7 @@ import platform
 import time
 import uuid
 import logging
-from packaging.specifiers import SpecifierSet
-from packaging.version import Version
-from utils.util import norm_pkg, resolve_pkg_dir
+from utils.util import norm_pkg, resolve_pkg_dir, norm_ver
 
 if (platform.system() == 'Windows'):
     slash = "\\"
@@ -61,15 +59,6 @@ def remove_parentheses_from_end(elements):
     # 使用列表推导式处理每个元素
     return [element.rstrip('()') for element in elements]
 
-def is_version_compat(proj_cons, lib_cons):
-    # 创建一个 SpecifierSet，表示兼容版本范围
-    compatible_versions = SpecifierSet(lib_cons)
-
-    if proj_cons in compatible_versions:
-        return True
-    else:
-        return False
-
 def download_json(url, filename):
     for retry in range(3):
         try:
@@ -98,10 +87,13 @@ def download_json(url, filename):
 
 def download_from_data(package, package_version):
     norm_name = norm_pkg(package)
+    norm_ver_name = norm_ver(package_version)
     logging.debug("Downloading constraint data for %s", package)
     url = 'https://pypi.tuna.tsinghua.edu.cn/pypi/' + norm_name + '/json'
+    # PyPI API URL requires RAW version string
     url2 = 'https://pypi.org/pypi/' + norm_name + '/' + package_version + '/json'
-    path = constraint_path_prefix + norm_name + '/' + norm_name + package_version
+    # Filesystem path uses NORMALIZED version
+    path = constraint_path_prefix + norm_name + '/' + norm_name + norm_ver_name
     if not os.path.exists(path):
         try:
             os.makedirs(path, exist_ok=True)
@@ -279,14 +271,14 @@ def _resolve_pkg_dir(pkg):
     return resolve_pkg_dir(pkg, constraint_path_prefix, library_path_prefix)
 
 
-def _try_read_constraint_json(pkg, version):
-    """Try to read constraint JSON using both PEP 503 and underscore namings.
-    Returns (data, None) on success, or (None, None) if neither found."""
+def try_read_constraint_json(pkg, version):
+    """Read constraint JSON, trying PEP 503 name then underscore fallback."""
     norm_name = norm_pkg(pkg)
     alt_name = pkg.lower().replace('-', '_')
+    nv = norm_ver(version)
     for name in (norm_name, alt_name):
-        json_path = f"{constraint_path_prefix}{name}/{name}{version}/{name}.json"
-        if os.path.exists(json_path):
+        json_path = f"{constraint_path_prefix}{name}/{name}{nv}/{name}.json"
+        if os.path.isfile(json_path):
             try:
                 with open(json_path, 'r') as file:
                     return json.load(file), None
@@ -298,8 +290,9 @@ def _try_read_constraint_json(pkg, version):
 def get_library_constraint_from_metadata(pkg, version, python_version):
     res = {}
     norm_pkg_name = _resolve_pkg_dir(pkg)
+    norm_ver_name = norm_ver(version)
     #从setup.py中提取依赖
-    library_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{version}/{norm_pkg_name}"
+    library_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/{norm_pkg_name}"
     if not os.path.exists(library_path):
         pass
     else:
@@ -313,11 +306,11 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
                 res[key] = None
     #print(res)
     #从metadata中提取依赖
-    metadata_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{version}/{norm_pkg_name}-{version}.dist-info/METADATA"
+    metadata_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/{norm_pkg_name}-{norm_ver_name}.dist-info/METADATA"
     if not os.path.exists(metadata_path):
         # Fallback 1: .egg-info/requires.txt (for sdist without .dist-info)
         egg_requires = None
-        target_dir = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{version}/"
+        target_dir = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/"
         if os.path.isdir(target_dir):
             for item in os.listdir(target_dir):
                 if item.endswith('.egg-info'):
@@ -334,7 +327,7 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
             requires_dist = egg_requires
         else:
             # Fallback 2: PyPI JSON (try both PEP 503 and underscore namings)
-            data, _ = _try_read_constraint_json(pkg, version)
+            data, _ = try_read_constraint_json(pkg, version)
             if data is not None:
                 try:
                     requires_dist = data['info']['requires_dist']
@@ -352,13 +345,13 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
             metadata = None
         if metadata is not None:
             requires_dist_pattern = r"Requires-Dist: (.+?)(?=\n|$)"
-            requires_dist = re.findall(requires_dist_pattern, metadata) 
+            requires_dist = re.findall(requires_dist_pattern, metadata)
         else:
             requires_dist = None
     #print(requires_dist)
-    
+
     if requires_dist is None or len(requires_dist) == 0:
-        data, _ = _try_read_constraint_json(pkg, version)
+        data, _ = try_read_constraint_json(pkg, version)
         if data is not None:
             try:
                 requires_dist = data['info']['requires_dist']

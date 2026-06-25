@@ -30,6 +30,22 @@ def resolve_pkg_dir(pkg, *prefixes):
     return norm
 
 
+def norm_ver(ver):
+    """Normalize a version string via PEP 440.
+
+    Strips leading zeros in release segments (e.g. '0.2.2.09' -> '0.2.2.9').
+    Preserves pre-release labels, local version labels, and legacy versions.
+    Falls back to the original string if parsing fails.
+    """
+    try:
+        return str(Version(ver))
+    except Exception:
+        try:
+            return str(version.parse(ver))
+        except Exception:
+            return ver
+
+
 def get_path_by_extension(root_dir, flag='.py'):
     paths = []
     for root, dirs, files in os.walk(root_dir):
@@ -62,20 +78,36 @@ def find_requirements_path(dir_path):
     return None
 
 def is_version_compat(proj_cons, lib_cons):
-    # 创建一个 SpecifierSet，表示兼容版本范围
-    new_lib_cons = re.sub(r'[a-zA-Z]', '', lib_cons)
+    """Check if proj_cons satisfies lib_cons (a PEP 440 specifier or similar).
+
+    Handles PEP 440 features (local labels, pre-release, post-release)
+    and non-standard constraints (quoted specifiers, missing commas,
+    legacy versions like '2011k').
+    """
+    # Strip +local labels first (PEP 440: ignored for version comparison,
+    # and '+' is not a valid specifier character)
+    proj_cons_clean = re.sub(r'\+[^,<>=~!\s]*', '', proj_cons)
+    lib_cons_clean = re.sub(r'\+[^,<>=~!\s]*', '', lib_cons)
+
+    # Tier 1: Strip letters, quotes, fix commas (primary path — legacy compatible)
+    new_proj_cons = re.sub(r'[a-zA-Z]', '', proj_cons_clean)
+    new_lib_cons = re.sub(r'[a-zA-Z]', '', lib_cons_clean)
     new_lib_cons = new_lib_cons.replace('*', '0')
     new_lib_cons = new_lib_cons.replace('\'', '')
-    new_proj_cons = re.sub(r'[a-zA-Z]', '', proj_cons)
+    new_lib_cons = new_lib_cons.replace('"', '')
     if new_lib_cons.endswith('.'):
         new_lib_cons = new_lib_cons[:-1]
-    new_lib_cons = re.sub(r'(\d[\d\.]*)(?=(<|>|=))', r'\1,', new_lib_cons)
-    #print(new_lib_cons, lib_cons)
-    compatible_versions = SpecifierSet(new_lib_cons)
+    new_lib_cons = re.sub(r'(\d[\d\.]*)(?=(<|>|=|~|!))', r'\1,', new_lib_cons)
 
-    if new_proj_cons in compatible_versions:
-        return True
-    else:
+    try:
+        return new_proj_cons in SpecifierSet(new_lib_cons)
+    except Exception:
+        pass
+
+    # Tier 2: PEP 440 passthrough (fallback for non-standard versions)
+    try:
+        return proj_cons_clean in SpecifierSet(lib_cons_clean)
+    except Exception:
         return False
 
 def compare_version(version1, version2):
@@ -391,7 +423,8 @@ def update_project_dependencies(target_proj_dependency, res):
 
 def get_library_paths(library_path_prefix, target_library, version, call_module):
     norm_lib = resolve_pkg_dir(target_library, library_path_prefix)
-    return f"{library_path_prefix}{norm_lib}/{norm_lib}{version}/{call_module}"
+    norm_ver_name = norm_ver(version)
+    return f"{library_path_prefix}{norm_lib}/{norm_lib}{norm_ver_name}/{call_module}"
 
 
 def cleanup_temp_files():

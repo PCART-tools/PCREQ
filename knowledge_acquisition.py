@@ -221,18 +221,16 @@ def _parse_wheel_tag(filename):
 def _select_download_urls(package_name, version, python_version):
     """Return priority-sorted download URLs from version constraint JSON."""
     norm_name = norm_pkg(package_name)
-    json_path = f"{constraint_path_prefix}{norm_name}/{norm_name}{version}/{norm_name}.json"
-    if not os.path.exists(json_path):
-        # backward compat: check old KB underscore path
-        _resolved = resolve_pkg_dir(package_name, constraint_path_prefix)
-        if _resolved != norm_name:
-            _old_path = f"{constraint_path_prefix}{_resolved}/{_resolved}{version}/{_resolved}.json"
-            if os.path.exists(_old_path):
-                json_path = _old_path
-            else:
-                return []
-        else:
-            return []
+    _resolved = resolve_pkg_dir(package_name, constraint_path_prefix)
+    nv = norm_ver(version)
+    json_path = None
+    for name in (norm_name, _resolved):
+        _candidate = f"{constraint_path_prefix}{name}/{name}{nv}/{name}.json"
+        if os.path.exists(_candidate):
+            json_path = _candidate
+            break
+    if json_path is None:
+        return []
     try:
         with open(json_path) as f:
             data = json.load(f)
@@ -723,7 +721,8 @@ def _check_source(td, cm):
 
 def download_pypi_source(package_name, version=None, python_version="3.7", output_dir="."):
     norm_name = norm_pkg(package_name)
-    target_dir = f"{library_path_prefix}{norm_name}/{norm_name}{version}"
+    norm_ver_name = norm_ver(version)
+    target_dir = f"{library_path_prefix}{norm_name}/{norm_name}{norm_ver_name}"
     call_module = get_library_call_module(package_name)
 
     if _check_source(target_dir, call_module):
@@ -733,14 +732,14 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
     # backward compat: check old KB underscore path
     _resolved_lib = resolve_pkg_dir(package_name, library_path_prefix)
     if _resolved_lib != norm_name:
-        _old_dir = f"{library_path_prefix}{_resolved_lib}/{_resolved_lib}{version}"
+        _old_dir = f"{library_path_prefix}{_resolved_lib}/{_resolved_lib}{norm_ver_name}"
         if _check_source(_old_dir, call_module):
             _stats["skipped"] += 1
             return
 
     if os.path.exists(target_dir + ".no_source") or (
             _resolved_lib != norm_name and
-            os.path.exists(f"{library_path_prefix}{_resolved_lib}/{_resolved_lib}{version}.no_source")):
+            os.path.exists(f"{library_path_prefix}{_resolved_lib}/{_resolved_lib}{norm_ver_name}.no_source")):
         _stats["skipped"] += 1
         return
 
@@ -908,7 +907,7 @@ def _write_library_version(pkg, python_version, compatible_versions):
             logging.warning("Keeping existing %d versions for %s, got empty from PyPI",
                             len(data[norm_pkg_name][python_version]), pkg)
         else:
-            data[norm_pkg_name][python_version] = compatible_versions
+            data[norm_pkg_name][python_version] = [norm_ver(v) for v in compatible_versions]
         tmp_path = f"{lv_path}.{uuid.uuid4().hex[:8]}.tmp"
         try:
             with open(tmp_path, "w") as f:
@@ -961,7 +960,8 @@ def _get_all_modules(target_dir, lib):
 
 def extract_fine_grained_knowledge(lib, version):
     norm_lib = resolve_pkg_dir(lib, library_path_prefix)
-    target_dir = f"{library_path_prefix}{norm_lib}/{norm_lib}{version}"
+    norm_ver_name = norm_ver(version)
+    target_dir = f"{library_path_prefix}{norm_lib}/{norm_lib}{norm_ver_name}"
     all_modules = _get_all_modules(target_dir, lib)
 
     merged = {"functions": {}, "classes": {}, "methods": {},
@@ -1014,7 +1014,7 @@ def extract_fine_grained_knowledge(lib, version):
         return
     norm_lib = resolve_pkg_dir(lib, api_path_prefix)
     os.makedirs(f"{api_path_prefix}{norm_lib}/", exist_ok=True)
-    out_path = f"{api_path_prefix}{norm_lib}/{version}.json"
+    out_path = f"{api_path_prefix}{norm_lib}/{norm_ver_name}.json"
     tmp_path = f"{out_path}.{uuid.uuid4().hex[:8]}.tmp"
     with open(tmp_path, "w") as f:
         json.dump(merged, f)
@@ -1109,17 +1109,11 @@ if __name__ == '__main__':
             n_vers = len(compatible_versions)
             _dl_before = _stats["downloaded"]
             for ver_idx, ver in enumerate(compatible_versions):
-                norm_pkg_name = norm_pkg(pkg)
-                _constraint_json = f"{constraint_path_prefix}{norm_pkg_name}/{norm_pkg_name}{ver}/{norm_pkg_name}.json"
-                if not os.path.exists(_constraint_json):
-                    # backward compat: check old KB underscore path
-                    _resolved_c = resolve_pkg_dir(pkg, constraint_path_prefix)
-                    if _resolved_c != norm_pkg_name:
-                        _old_json = f"{constraint_path_prefix}{_resolved_c}/{_resolved_c}{ver}/{_resolved_c}.json"
-                        if not os.path.exists(_old_json):
-                            download_from_data(pkg, ver)
-                    else:
-                        download_from_data(pkg, ver)
+                # Check if constraint JSON already exists (delegates to
+                # try_read_constraint_json which handles name+version fallbacks)
+                _data, __ = try_read_constraint_json(pkg, ver)
+                if _data is None:
+                    download_from_data(pkg, ver)
                 try:
                     download_pypi_source(pkg, ver, python_version)
                 except Exception:
@@ -1244,7 +1238,7 @@ if __name__ == '__main__':
                     logging.warning("Keeping existing %d versions for %s, got empty from PyPI",
                                     len(data[dep][python_version]), dep)
                 else:
-                    data[dep][python_version] = compatible_versions
+                    data[dep][python_version] = [norm_ver(v) for v in compatible_versions]
                 lv_path = f"{version_path_prefix}library_version.json"
                 tmp_path = lv_path + ".tmp"
                 with open(tmp_path, "w") as f:

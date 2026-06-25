@@ -197,7 +197,9 @@ def remove_redundant_dependencies(end_target_proj_dependency, target_library, st
     #print(target_version)
     all_used_library = get_paths_of_import(proj_path)
     library_call_module = get_library_call_module(target_library)
-    library_path = library_path_prefix + target_library + slash + target_library + target_version + slash + library_call_module
+    norm_lib = resolve_pkg_dir(target_library, library_path_prefix)
+    norm_ver_name = norm_ver(target_version)
+    library_path = library_path_prefix + norm_lib + slash + norm_lib + norm_ver_name + slash + library_call_module
     all_used_library2 = get_paths_of_import(library_path)
     new_target_proj_dependency = {}
     redundant_dependencies = []
