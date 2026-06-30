@@ -184,42 +184,65 @@ def get_compatible_versions(package_name, python_version):
 # ---------------------------------------------------------------------------
 
 def _parse_wheel_tag(filename):
-    """Return (priority, is_pure, py_major) from a wheel filename.
+    """Parse wheel filename per PEP 427 (last 3 segments).
 
-    Priority: 1=py3-none-any, 2=cpXX-none-any, 3=abi=none+platform, <0=compiled/not-wheel.
-    py_major: 3 if python tag is py3/cp3X, 2 for py2/cp2X, 0 otherwise.
+    Returns ``(python_tag, platform_tag, py_major)`` or ``None`` if not a wheel.
     """
     if not filename.endswith(".whl"):
-        return -1, False, 0
+        return None
     parts = filename[:-4].split("-")
     if len(parts) < 4:
-        return -1, False, 0
+        return None
+    python_tag = parts[-3]
     platform_tag = parts[-1]
-    abi_tag = parts[-2]
-    python_tags = parts[2:-2]
-    all_tags = set()
-    for t in python_tags:
-        all_tags.update(t.split("."))
-    py_major = 0
-    for t in all_tags:
-        if t == "py3" or t.startswith("cp3"):
-            py_major = 3
-            break
-        elif t == "py2" or t.startswith("cp2"):
-            py_major = 2
-    is_pure = abi_tag in ("none", "abi3")
-    if not is_pure:
-        return -1, False, py_major
-    if platform_tag == "any":
-        if any(t == "py3" or t.startswith("py3") for t in all_tags):
-            return 1, True, py_major
-        elif any(t.startswith("cp") for t in all_tags):
-            return 2, True, py_major
-    return 3, True, py_major
+    tags = set(python_tag.split("."))
+    py_major = 3 if any(t.startswith(("py3", "cp3")) for t in tags) else \
+               2 if any(t.startswith(("py2", "cp2")) for t in tags) else 0
+    return python_tag, platform_tag, py_major
+
+
+def _wheel_priority(python_tag, platform_tag, py_major, python_version):
+    """Return sort priority for a Python 3 wheel, or -1 to skip.
+
+    Priority (lower = better):
+      1: py3-none-any / py2.py3-none-any  (pure universal)
+      2: cp{ver}-*-any                      (exact cp version, pure)
+      3: other py3/cp3 + any                (Python 3 compatible, pure)
+      4: py3-none-{platform}                (universal, platform binary)
+      5: cp{ver}-*-{platform}               (exact cp version, platform binary)
+      6: other py3/cp3 + {platform}         (Python 3 compatible, platform binary)
+    """
+    if py_major != 3:
+        return -1
+    tags = set(python_tag.split("."))
+    is_any = (platform_tag == "any")
+    is_exact_ver = f"cp{python_version.replace('.', '')}" in tags
+    is_py3_universal = "py3" in tags
+
+    if is_any:
+        if is_py3_universal:
+            return 1  # py3-none-any or py2.py3-none-any
+        if is_exact_ver:
+            return 2  # cp{ver}-*-any
+        return 3      # other py3/cp3 + any
+    else:
+        if is_py3_universal:
+            return 4  # py3-none-{platform}
+        if is_exact_ver:
+            return 5  # cp{ver}-*-{platform}
+        return 6      # other py3/cp3 + {platform}
 
 
 def _select_download_urls(package_name, version, python_version):
-    """Return priority-sorted download URLs from version constraint JSON."""
+    """Return priority-sorted download URLs from version constraint JSON.
+
+    Priority (platform-independent):
+      1: py3-none-any        5: cp{ver}-*-{platform}
+      2: cp{ver}-*-any       6: other py3/cp3 + {platform}
+      3: other py3/cp3 + any 7: sdist
+      4: py3-none-{platform}
+    Python 2-only wheels are skipped.
+    """
     norm_name = norm_pkg(package_name)
     _resolved = resolve_pkg_dir(package_name, constraint_path_prefix)
     nv = norm_ver(version)
@@ -245,14 +268,6 @@ def _select_download_urls(package_name, version, python_version):
     urls = data.get("urls", [])
     if not urls:
         return []
-    if sys.platform.startswith("linux"):
-        plat_tag = "manylinux"
-    elif sys.platform == "darwin":
-        plat_tag = "macosx"
-    elif sys.platform == "win32":
-        plat_tag = "win"
-    else:
-        plat_tag = None
     scored = []
     for u in urls:
         pkg_type = u.get("packagetype")
@@ -262,36 +277,29 @@ def _select_download_urls(package_name, version, python_version):
             continue
         if filename.endswith((".exe", ".msi", ".dmg", ".rpm", ".deb")):
             continue
-        # Skip Python 2 wheels (cp2*/py2*), but not universal py2.py3
-        if pkg_type == "bdist_wheel" and ('cp2' in filename or 'py2' in filename) and 'py2.py3' not in filename:
-            continue
         if pkg_type == "bdist_wheel":
-            priority, is_pure, py_major = _parse_wheel_tag(filename)
-            platform_ok = ("any" in filename) or (plat_tag and plat_tag in filename)
-            if is_pure:
-                if platform_ok:
-                    pass
-                else:
-                    priority = 6
-            else:
-                if platform_ok:
-                    if py_major == 3:
-                        priority = 4
-                    else:
-                        priority = 5
-                else:
-                    priority = 7
+            tag = _parse_wheel_tag(filename)
+            if tag is None:
+                continue
+            python_tag, platform_tag, py_major = tag
+            priority = _wheel_priority(python_tag, platform_tag,
+                                       py_major, python_version)
+            if priority < 0:
+                continue  # Python 2, skip
         elif pkg_type == "sdist":
-            priority = 8
+            priority = 7
         else:
             continue
         scored.append((priority, url))
-    scored.sort(key=lambda x: x[0])
+    scored.sort(key=lambda x: (x[0], x[1]))
     return [url for _, url in scored]
 
 
 def _build_fallback_candidates(package_name, version):
-    """Return [(url, is_wheel), ...] from PyPI JSON API, sorted by priority."""
+    """Return [(url, is_wheel), ...] from PyPI JSON API, sorted by priority.
+
+    Same platform-independent priority as _select_download_urls.
+    """
     candidates = []
     pypi_url = f"https://pypi.org/pypi/{package_name}/{version}/json"
     try:
@@ -299,14 +307,13 @@ def _build_fallback_candidates(package_name, version):
         if r.status_code != 200:
             return candidates
         data = r.json()
-        if sys.platform.startswith("linux"):
-            _plat = "manylinux"
-        elif sys.platform == "darwin":
-            _plat = "macosx"
-        elif sys.platform == "win32":
-            _plat = "win"
-        else:
-            _plat = None
+        # Use a default python_version for PyPI fallback (cp3 pattern match).
+        # Actual version doesn't matter much here — exact cp bump (priority 2→5
+        # or 4→6) is minor compared to any/pure preference.
+        pv = data.get("info", {}).get("requires_python", "") or "3.0"
+        pv_digits = "".join(c for c in pv.split(",")[0].strip(" >=") if c.isdigit())
+        if not pv_digits:
+            pv_digits = "3"
         for u in data.get("urls", []):
             fname = u.get("filename", "")
             url = u.get("url", "")
@@ -314,35 +321,111 @@ def _build_fallback_candidates(package_name, version):
                 continue
             pkg_type = u.get("packagetype", "")
             if pkg_type == "bdist_wheel":
-                prio, pure, py_major = _parse_wheel_tag(fname)
-                platform_ok = ("any" in fname) or (_plat and _plat in fname)
-                if pure:
-                    candidates.append((prio if platform_ok else 6, url, True))
-                elif platform_ok:
-                    if py_major == 3:
-                        candidates.append((4, url, True))
-                    else:
-                        candidates.append((5, url, True))
-                else:
-                    candidates.append((7, url, True))
+                tag = _parse_wheel_tag(fname)
+                if tag is None:
+                    continue
+                python_tag, platform_tag, py_major = tag
+                priority = _wheel_priority(python_tag, platform_tag,
+                                           py_major, pv_digits)
+                if priority < 0:
+                    continue
+                candidates.append((priority, url, True))
             elif pkg_type == "sdist":
-                candidates.append((8, url, False))
-        candidates.sort(key=lambda x: x[0])
+                candidates.append((7, url, False))
+        candidates.sort(key=lambda x: (x[0], x[1]))
     except requests.RequestException:
         pass
     return [(url, is_wheel) for _, url, is_wheel in candidates]
 
 
+def _safe_target(base_dir, member_name):
+    """Return safe absolute target path, or None if traversal detected.
+
+    Guarantees the resolved path stays within *base_dir*, blocking:
+      - ``../`` and ``..\\`` parent traversal
+      - absolute paths (``/etc/passwd``)
+    """
+    name = member_name.replace("\\", "/")
+    if os.path.isabs(name):
+        return None
+    target = os.path.abspath(os.path.join(base_dir, name))
+    base = os.path.abspath(base_dir)
+    if os.path.commonpath([base, target]) != base:
+        return None
+    return target
+
+
+def _should_extract(name):
+    """Return True if *name* is Python source or packaging metadata.
+
+    Keeps:
+      - ``.py``, ``.pyi``, ``.pyw``, ``.pxi`` source files
+      - ``.dist-info/``, ``.egg-info/``, ``.data/`` metadata directories
+      - ``setup.py``, ``setup.cfg``, ``pyproject.toml`` (build configs)
+    Skips binaries (``.so``, ``.dll``), caches (``.pyc``), data, docs.
+    """
+    if any(d in name for d in (".dist-info/", ".egg-info/", ".data/")):
+        return True
+    if name.endswith((".py", ".pyi", ".pyw", ".pxi")):
+        return True
+    if os.path.basename(name) in ("setup.py", "setup.cfg", "pyproject.toml"):
+        return True
+    return False
+
+
 def _extract_archive(archive_path, target_dir):
-    """Extract archive to target_dir, flattening single-top-level-dir wrappers."""
+    """Extract archive to *target_dir*, flattening single-top-level-dir wrappers.
+
+    Per-member safety validation (Point 6):
+      - rejects ``../`` and absolute-path traversal
+      - rejects symlink, hardlink, device and fifo tar members
+
+    Selective extraction (Point 14):
+      - only writes ``.py/.pyi/.pyw/.pxi`` + metadata + build configs
+      - skips ``.so``, ``.dll``, ``.pyc`` and other non-source files
+    """
     extract_tmp = tempfile.mkdtemp(dir=os.path.dirname(target_dir),
                                     prefix=".extract-")
-    if archive_path.endswith(('.tar.gz', '.tgz', '.tar.bz2')):
+    # Try tarfile first (auto-detects compression from magic bytes:
+    # .tar.gz, .tar.bz2, .tar.xz, .tar, .tgz, .tbz2, .txz)
+    try:
         with tarfile.open(archive_path) as tf:
-            tf.extractall(extract_tmp)
-    else:
+            # --- Point 6: per-member safety validation ---------------
+            extract_ok = []
+            for member in tf.getmembers():
+                if member.issym() or member.islnk():
+                    continue  # skip symlinks/hardlinks (rare, not .py source)
+                if member.isdev():
+                    raise ValueError(
+                        f"Unsafe tar member (device): {member.name}")
+                if member.isfifo():
+                    raise ValueError(
+                        f"Unsafe tar member (fifo): {member.name}")
+                target = _safe_target(extract_tmp, member.name)
+                if target is None:
+                    raise ValueError(
+                        f"Path traversal in tar: {member.name}")
+                extract_ok.append(member)
+            # --- Point 6+14: selective per-member extract ------------
+            for member in extract_ok:
+                if not _should_extract(member.name):
+                    continue
+                tf.extract(member, extract_tmp)
+    except (tarfile.ReadError, tarfile.CompressionError):
+        # Fall back to zipfile (handles .whl, .zip)
         with zipfile.ZipFile(archive_path) as zf:
-            zf.extractall(extract_tmp)
+            # --- Point 6: per-entry safety validation ----------------
+            extract_ok = []
+            for info in zf.infolist():
+                if _safe_target(extract_tmp, info.filename) is None:
+                    raise ValueError(
+                        f"Path traversal in zip: {info.filename}")
+                extract_ok.append(info)
+            # --- Point 6+14: selective per-entry extract -------------
+            for info in extract_ok:
+                if not _should_extract(info.filename):
+                    continue
+                zf.extract(info, extract_tmp)
     for root, dirs, files in os.walk(extract_tmp):
         for d in dirs:
             try:
@@ -685,9 +768,33 @@ def _init_worker():
         logging.getLogger().setLevel(logging.INFO)
 
 
+def _mark_no_source(target_dir, reason=""):
+    """Write ``.no_source`` marker **inside** *target_dir* with optional *reason*.
+
+    Creates the directory if it does not exist (Point 8).
+    """
+    os.makedirs(target_dir, exist_ok=True)
+    marker = os.path.join(target_dir, ".no_source")
+    with open(marker, "w") as f:
+        if reason:
+            f.write(reason + "\n")
+
+
 def _check_source(td, cm):
-    """Check if a Python module is already extracted in *td* under *cm* or its variants."""
+    """Check if a Python module is already extracted in *td* under *cm* or its variants.
+
+    Marker protocol (Point 13):
+      - ``.complete`` exists → trust completed build, return True
+      - ``.building`` exists without ``.complete`` → incomplete, return False
+      - no markers → fall back to legacy source scan
+    """
     if not os.path.isdir(td):
+        return False
+    # Point 13: .complete marker is authoritative for finished builds
+    if os.path.isfile(os.path.join(td, ".complete")):
+        return True
+    # Point 13: .building without .complete → interrupted build
+    if os.path.isfile(os.path.join(td, ".building")):
         return False
     # 1. Flat package: __init__.py directly in target_dir
     if os.path.isfile(os.path.join(td, "__init__.py")):
@@ -737,13 +844,25 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             _stats["skipped"] += 1
             return
 
-    if os.path.exists(target_dir + ".no_source") or (
+    if os.path.exists(os.path.join(target_dir, ".no_source")) or (
             _resolved_lib != norm_name and
-            os.path.exists(f"{library_path_prefix}{_resolved_lib}/{_resolved_lib}{norm_ver_name}.no_source")):
+            os.path.exists(os.path.join(f"{library_path_prefix}{_resolved_lib}/"
+                                        f"{_resolved_lib}{norm_ver_name}",
+                                        ".no_source"))):
         _stats["skipped"] += 1
         return
 
     os.makedirs(target_dir, exist_ok=True)
+
+    # Point 13: mark build as in-progress
+    building_marker = os.path.join(target_dir, ".building")
+    complete_marker = os.path.join(target_dir, ".complete")
+    no_source_marker = os.path.join(target_dir, ".no_source")
+    for m in (complete_marker, no_source_marker):
+        if os.path.exists(m):
+            os.remove(m)
+    with open(building_marker, "w") as f:
+        f.write(f"started {time.strftime('%Y-%m-%dT%H:%M:%S')}\n")
 
     url_sources = []
     urls = _select_download_urls(package_name, version, python_version)
@@ -755,10 +874,9 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
         url_sources = _build_fallback_candidates(package_name, version)
 
     if not url_sources:
-        with open(target_dir + ".no_source", "w") as _:
-            pass
-        if os.path.exists(target_dir):
-            shutil.rmtree(target_dir)
+        if os.path.exists(building_marker):
+            os.remove(building_marker)
+        _mark_no_source(target_dir, "no URL candidates")
         _stats["failed"] += 1
         return
 
@@ -830,10 +948,9 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                 os.remove(saved)
 
         if artifact_path is None:
-            with open(target_dir + ".no_source", "w") as _:
-                pass
-            if os.path.exists(target_dir):
-                shutil.rmtree(target_dir)
+            if os.path.exists(building_marker):
+                os.remove(building_marker)
+            _mark_no_source(target_dir, "no artifact with .py files from any URL")
             _stats["failed"] += 1
             return
 
@@ -854,20 +971,23 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             )
             if not _has_valid_module:
                 # No valid Python module extracted (C extension or similar)
-                with open(target_dir + ".no_source", "w") as _:
-                    pass
-                if os.path.exists(target_dir):
-                    shutil.rmtree(target_dir)
+                if os.path.exists(building_marker):
+                    os.remove(building_marker)
+                _mark_no_source(target_dir, "no valid Python module — C extension or similar")
                 _stats["failed"] += 1
             else:
                 _merge_core_namespace(target_dir, call_module)
                 _keep_dist_info(target_dir, package_name, version)
+                # Point 13: mark build as complete
+                if os.path.exists(building_marker):
+                    os.remove(building_marker)
+                with open(complete_marker, "w") as _:
+                    pass
                 _stats["downloaded"] += 1
         else:
-            with open(target_dir + ".no_source", "w") as _:
-                pass
-            if os.path.exists(target_dir):
-                shutil.rmtree(target_dir)
+            if os.path.exists(building_marker):
+                os.remove(building_marker)
+            _mark_no_source(target_dir, "_install_source failed")
             _stats["failed"] += 1
 
 
@@ -1291,9 +1411,17 @@ if __name__ == '__main__':
         for lib in all_library:
             norm_lib = resolve_pkg_dir(lib, api_path_prefix)
             for ver in available_version.get(lib, []):
-                if not os.path.exists(f"{api_path_prefix}{norm_lib}/{ver}.json"):
-                    logging.info("Queued extraction task: %s==%s", lib, ver)
-                    tasks.append((lib, ver))
+                nv = norm_ver(ver)
+                json_path = f"{api_path_prefix}{norm_lib}/{nv}.json"
+                try:
+                    if os.path.getsize(json_path) >= 10:
+                        with open(json_path, 'r') as f:
+                            data = json.load(f)
+                        if any(data.get(k) for k in ('functions', 'classes', 'modules')):
+                            continue
+                except (json.JSONDecodeError, OSError, KeyError, FileNotFoundError):
+                    pass
+                tasks.append((lib, ver))
         pool_size = min(20, cpu_count())
         logging.info("Phase 3: extracting APIs | %d libs, %d tasks, pool=%d workers",
                      len(all_library), len(tasks), pool_size)

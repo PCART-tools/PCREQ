@@ -75,6 +75,14 @@ def _scan(kb_path):
             elif os.path.exists(no_source):
                 lib_skipped += 1
                 skipped += 1
+            elif os.path.exists(os.path.join(ver_path, ".building")):
+                # Point 13: .building without .complete → interrupted build
+                lib_failed += 1
+                failed += 1
+                lib_issues.append({"library": lib, "version": ver,
+                                   "status": "interrupted",
+                                   "reason": "build interrupted — .building marker left",
+                                   "fix": "delete directory and re-download"})
             elif os.path.exists(json_failed):
                 lib_failed += 1
                 failed += 1
