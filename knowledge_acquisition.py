@@ -495,11 +495,13 @@ def _read_top_level(extract_dir):
     return None
 
 
-def _install_source(target_dir, extract_dir, call_module):
+def _install_source(target_dir, extract_dir, call_module, is_wheel=True):
     """Move Python packages from extract_dir to target_dir.
 
-    Uses top_level.txt as a whitelist when available (wheel/sdist with
-    dist-info); otherwise falls back to __init__.py-based auto-detection.
+    *is_wheel* controls how aggressive the fallback strategy is:
+      - wheel: allow recursive os.walk and whitelist relaxation
+      - sdist: strict — refuse recursive walk and whitelist relaxation
+        to avoid pulling in tests/docs/examples
 
     Returns True if at least one .py file ends up in target_dir.
     """
@@ -523,7 +525,7 @@ def _install_source(target_dir, extract_dir, call_module):
             return mod_norm in wl_norm
         return True
 
-    def _move_items(source_dir):
+    def _move_items(source_dir, allow_recursive_fallback=True):
         any_moved = False
         for item in sorted(os.listdir(source_dir)):
             if not _should_move(item):
@@ -563,8 +565,9 @@ def _install_source(target_dir, extract_dir, call_module):
                     any_moved = True
                 except OSError:
                     pass
-        # Fallback: recursively find .py files in non-package subdirs
-        if not any_moved:
+        # Fallback: recursively find .py files in non-package subdirs.
+        # Allowed for wheel (structured), refused for sdist (tests/docs mixed in).
+        if not any_moved and allow_recursive_fallback:
             for root, dirs, files in os.walk(source_dir):
                 for f in files:
                     if f.endswith(".py") and f != "setup.py":
@@ -578,23 +581,27 @@ def _install_source(target_dir, extract_dir, call_module):
                             pass
         return any_moved
 
+    moved = False
     if has_lib_layout:
-        _move_items(lib_dir)
+        moved = _move_items(lib_dir, allow_recursive_fallback=is_wheel) or moved
     if has_src_layout:
-        _move_items(src_dir)
-    moved = _move_items(extract_dir)
+        moved = _move_items(src_dir, allow_recursive_fallback=is_wheel) or moved
+    if not moved:
+        moved = _move_items(extract_dir, allow_recursive_fallback=is_wheel)
 
     # top_level.txt whitelist may fail when import name differs from
     # directory name (e.g. "cv2" vs "opencv_python").  Fall back.
-    if whitelist and not moved:
-        if has_lib_layout:
-            whitelist = None
-            _move_items(lib_dir)
-        if has_src_layout:
-            whitelist = None
-            _move_items(src_dir)
+    # Only wheel can relax the whitelist — sdist would pull in tests/docs.
+    if whitelist and not moved and is_wheel:
+        whitelist_orig = whitelist
         whitelist = None
-        _move_items(extract_dir)
+        if has_lib_layout:
+            moved = _move_items(lib_dir, allow_recursive_fallback=True) or moved
+        if has_src_layout:
+            moved = _move_items(src_dir, allow_recursive_fallback=True) or moved
+        if not moved:
+            moved = _move_items(extract_dir, allow_recursive_fallback=True)
+        whitelist = whitelist_orig
 
     # Move .dist-info, .egg-info, .data metadata
     for item in sorted(os.listdir(extract_dir)):
@@ -882,6 +889,7 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
 
     with tempfile.TemporaryDirectory() as tmpdir:
         artifact_path = None
+        artifact_is_wheel = False
         extract_dir = os.path.join(tmpdir, "extract")
 
         for url, _is_wheel in url_sources:
@@ -899,6 +907,7 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                 _extract_archive(tmp_archive, extract_dir)
                 if any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files):
                     artifact_path = existing
+                    artifact_is_wheel = _is_wheel
                     _stats["skipped"] += 1
                     break
                 else:
@@ -943,6 +952,7 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             _extract_archive(tmp_archive, extract_dir)
             if any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files):
                 artifact_path = saved
+                artifact_is_wheel = _is_wheel
                 break
             else:
                 os.remove(saved)
@@ -955,7 +965,7 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             return
 
         _promote_purelib(extract_dir)
-        if _install_source(target_dir, extract_dir, call_module):
+        if _install_source(target_dir, extract_dir, call_module, artifact_is_wheel):
             detected = _read_top_level_txt(target_dir, package_name)
             if detected:
                 if os.path.isdir(os.path.join(target_dir, detected)) or \
