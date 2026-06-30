@@ -666,6 +666,28 @@ def _keep_dist_info(target_dir, package_name, version):
 # ---------------------------------------------------------------------------
 
 
+# Known library → module name mappings where the PyPI name differs from
+# the import name and cannot be detected via top_level.txt.  Used to
+# decide whether the call_module source is trusted for .complete marker.
+_CALL_MODULE_MAP = {
+    'scikit-learn': 'sklearn',
+    'pillow': 'PIL',
+    'grpcio': 'grpc',
+    'absl-py': 'absl',
+    'pytorch-lightning': 'pytorch_lightning',
+    'opencv-python': 'cv2',
+    'scikit-image': 'skimage',
+    'tensorboardx': 'tensorboardX',
+    'python-dateutil': 'dateutil',
+    'python-dotenv': 'dotenv',
+    'pysocks': 'socks',
+    'python-gflags': 'gflags',
+    'websocket-client': 'websocket',
+    'nvidia-ml-py3': 'pynvml',
+    'greenlet': 'greenlet',
+}
+
+
 def _read_top_level_txt(target_dir, package_name):
     """Read top_level.txt from .dist-info/ (PEP 427) to get module name.
 
@@ -1134,6 +1156,13 @@ def extract_fine_grained_knowledge(lib, version):
         json.dump(merged, f)
     os.replace(tmp_path, out_path)
 
+    # Write .complete sidecar when call module source is trusted
+    # (from top_level.txt or a known hand-coded mapping).
+    if _read_top_level_txt(target_dir, lib) is not None or \
+       lib in _CALL_MODULE_MAP:
+        with open(out_path + ".complete", "w") as _:
+            pass
+
 
 def task(args):
     lib, version = args
@@ -1355,6 +1384,10 @@ if __name__ == '__main__':
             for ver in available_version.get(lib, []):
                 nv = norm_ver(ver)
                 json_path = f"{api_path_prefix}{norm_lib}/{nv}.json"
+                # Step 1: .complete marker — trusted call module source → skip
+                if os.path.exists(json_path + ".complete"):
+                    continue
+                # Step 2: legacy check — existing JSON with content → skip
                 try:
                     if os.path.getsize(json_path) >= 10:
                         with open(json_path, 'r') as f:
