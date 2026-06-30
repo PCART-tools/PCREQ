@@ -998,50 +998,34 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
 def _write_library_version(pkg, python_version, compatible_versions):
     """Atomically update library_version.json with merge semantics.
 
-    Uses a lock file to protect the read-modify-write sequence and a
-    UUID-based tmp file for atomic os.replace.
+    Uses a UUID-based tmp file + os.replace for atomic write.
+    No lock — single-process KB build, lock residue risk outweighs benefit.
     """
     lv_path = f"{version_path_prefix}library_version.json"
-    lock_path = lv_path + ".lock"
 
-    # Acquire cross-process lock
-    while True:
-        try:
-            lfd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_RDWR)
-            break
-        except FileExistsError:
-            time.sleep(0.01)
-
+    if os.path.exists(lv_path):
+        with open(lv_path, "r") as f:
+            data = json.load(f)
+    else:
+        data = {}
+    norm_pkg_name = norm_pkg(pkg)
+    if norm_pkg_name not in data:
+        data[norm_pkg_name] = {}
+    if not compatible_versions and data[norm_pkg_name].get(python_version):
+        # guard: don't overwrite existing version data with empty list
+        # (e.g. when PyPI API is throttled)
+        logging.warning("Keeping existing %d versions for %s, got empty from PyPI",
+                        len(data[norm_pkg_name][python_version]), pkg)
+    else:
+        data[norm_pkg_name][python_version] = [norm_ver(v) for v in compatible_versions]
+    tmp_path = f"{lv_path}.{uuid.uuid4().hex[:8]}.tmp"
     try:
-        if os.path.exists(lv_path):
-            with open(lv_path, "r") as f:
-                data = json.load(f)
-        else:
-            data = {}
-        norm_pkg_name = norm_pkg(pkg)
-        if norm_pkg_name not in data:
-            data[norm_pkg_name] = {}
-        if not compatible_versions and data[norm_pkg_name].get(python_version):
-            # guard: don't overwrite existing version data with empty list
-            # (e.g. when PyPI API is throttled)
-            logging.warning("Keeping existing %d versions for %s, got empty from PyPI",
-                            len(data[norm_pkg_name][python_version]), pkg)
-        else:
-            data[norm_pkg_name][python_version] = [norm_ver(v) for v in compatible_versions]
-        tmp_path = f"{lv_path}.{uuid.uuid4().hex[:8]}.tmp"
-        try:
-            with open(tmp_path, "w") as f:
-                json.dump(data, f)
-            os.replace(tmp_path, lv_path)
-        except (OSError, TypeError):
-            _stats["crashed"] += 1
-            logging.exception("library_version.json write failed for %s", pkg)
-    finally:
-        os.close(lfd)
-        try:
-            os.remove(lock_path)
-        except OSError:
-            pass
+        with open(tmp_path, "w") as f:
+            json.dump(data, f)
+        os.replace(tmp_path, lv_path)
+    except (OSError, TypeError):
+        _stats["crashed"] += 1
+        logging.exception("library_version.json write failed for %s", pkg)
 
 
 # ---------------------------------------------------------------------------
@@ -1262,9 +1246,9 @@ if __name__ == '__main__':
                      _stats["skipped"], _stats["crashed"], _phase1_elapsed)
         _phase_start_time = time.time()
 
-        # Phase 2: transitive dependency discovery (cached per library_version.json state)
+        # Phase 2: one-hop dependency discovery from known libraries
         _phase_start_time = time.time()
-        logging.info("Phase 2: discovering transitive dependencies from %d known libs",
+        logging.info("Phase 2: discovering one-hop dependencies from %d known libs",
                      len(all_packages))
         try:
             with open(f"{version_path_prefix}library_version.json", 'r') as file:
@@ -1274,34 +1258,14 @@ if __name__ == '__main__':
             logging.exception("Corrupted library_version.json, resetting")
             version_ls = {}
         known_libs = set(all_packages)
-        discovery_cache = f"{version_path_prefix}discovery_cache.json"
-        lib_names_key = sorted(version_ls.keys())
         discovered = set()
-        cache_hit = False
-        if os.path.exists(discovery_cache):
-            try:
-                with open(discovery_cache, 'r') as f:
-                    cache = json.load(f)
-                if (cache.get('lib_names') == lib_names_key and
-                        cache.get('python_version') == python_version):
-                    discovered = set(cache.get('discovered', []))
-                    cache_hit = True
-            except (json.JSONDecodeError, KeyError):
-                pass
-        if not cache_hit:
-            for lib in list(all_packages):
-                for ver in version_ls.get(lib, {}).get(python_version, []):
-                    constraint = get_library_constraint_from_metadata(lib, ver, python_version)
-                    for dep in constraint:
-                        base_dep = dep.split('[')[0].lower().replace('_', '-')
-                        if base_dep not in known_libs and base_dep not in discovered:
-                            discovered.add(base_dep)
-            cache = {'lib_names': lib_names_key, 'python_version': python_version,
-                     'discovered': list(discovered)}
-            tmp_cache = discovery_cache + ".tmp"
-            with open(tmp_cache, "w") as f:
-                json.dump(cache, f)
-            os.replace(tmp_cache, discovery_cache)
+        for lib in list(all_packages):
+            for ver in version_ls.get(lib, {}).get(python_version, []):
+                constraint = get_library_constraint_from_metadata(lib, ver, python_version)
+                for dep in constraint:
+                    base_dep = dep.split('[')[0].lower().replace('_', '-')
+                    if base_dep not in known_libs and base_dep not in discovered:
+                        discovered.add(base_dep)
         # Download and register newly discovered libraries
         _disc_total = len(discovered)
         for _disc_idx, dep in enumerate(sorted(discovered)):
@@ -1311,72 +1275,40 @@ if __name__ == '__main__':
                 logging.info("Phase 2 [%d/%d]: %s — no compatible versions",
                              _disc_idx + 1, _disc_total, dep)
                 continue
-            # Check if this is a source-only or binary-only package
-            pypi_url = f'https://pypi.org/pypi/{dep}/json'
-            has_sdist = False
-            try:
-                r = requests.get(pypi_url, timeout=7200)
-                if r.status_code == 200:
-                    urls = r.json().get('urls', [])
-                    has_sdist = any(u.get('packagetype') == 'sdist' for u in urls)
-            except requests.RequestException:
-                pass
-            if has_sdist:
-                _dl_before = _stats["downloaded"]
-                for ver_idx, ver in enumerate(compatible_versions):
-                    _dep_json = f"{constraint_path_prefix}{dep}/{dep}{ver}/{dep}.json"
-                    if not os.path.exists(_dep_json):
-                        _resolved_dep = resolve_pkg_dir(dep, constraint_path_prefix)
-                        if _resolved_dep != dep:
-                            _old_dep = f"{constraint_path_prefix}{_resolved_dep}/{_resolved_dep}{ver}/{_resolved_dep}.json"
-                            if not os.path.exists(_old_dep):
-                                download_from_data(dep, ver)
-                        else:
+            _dl_before = _stats["downloaded"]
+            for ver_idx, ver in enumerate(compatible_versions):
+                _dep_json = f"{constraint_path_prefix}{dep}/{dep}{ver}/{dep}.json"
+                if not os.path.exists(_dep_json):
+                    _resolved_dep = resolve_pkg_dir(dep, constraint_path_prefix)
+                    if _resolved_dep != dep:
+                        _old_dep = f"{constraint_path_prefix}{_resolved_dep}/{_resolved_dep}{ver}/{_resolved_dep}.json"
+                        if not os.path.exists(_old_dep):
                             download_from_data(dep, ver)
-                    try:
-                        download_pypi_source(dep, ver, python_version)
-                    except Exception:
-                        _stats["crashed"] += 1
-                        logging.error("download_pypi_source crashed for %s==%s", dep, ver)
-                    _dl_during = _stats["downloaded"] - _dl_before
-                    _vers_total = ver_idx + 1
-                    if n_dep_vers >= 40 and _dl_during > 0 and (
-                            _vers_total % 40 == 0 or ver_idx == n_dep_vers - 1):
-                        logging.info("  %s: %d/%d versions | dl:%d skip:%d",
-                                     dep, _vers_total, n_dep_vers,
-                                     _dl_during, _vers_total - _dl_during)
+                    else:
+                        download_from_data(dep, ver)
                 try:
-                    with open(f"{version_path_prefix}library_version.json", "r") as f:
-                        data = json.load(f)
-                except (json.JSONDecodeError, OSError):
+                    download_pypi_source(dep, ver, python_version)
+                except Exception:
                     _stats["crashed"] += 1
-                    logging.exception("Corrupted library_version.json, resetting")
-                    data = {}
-                if dep not in data:
-                    data[dep] = {}
-                if not compatible_versions and data[dep].get(python_version):
-                    logging.warning("Keeping existing %d versions for %s, got empty from PyPI",
-                                    len(data[dep][python_version]), dep)
-                else:
-                    data[dep][python_version] = [norm_ver(v) for v in compatible_versions]
-                lv_path = f"{version_path_prefix}library_version.json"
-                tmp_path = lv_path + ".tmp"
-                with open(tmp_path, "w") as f:
-                    json.dump(data, f)
-                os.replace(tmp_path, lv_path)
-                all_packages.add(dep)
-                _dl_delta = _stats["downloaded"] - _dl_before
-                if _dl_delta == 0:
-                    logging.info("Phase 2 [%d/%d]: %s (%d versions) — cached",
-                                 _disc_idx + 1, _disc_total, dep, n_dep_vers)
-                else:
-                    logging.info("Phase 2 [%d/%d]: %s (%d versions) — %d dl",
-                                 _disc_idx + 1, _disc_total, dep, n_dep_vers, _dl_delta)
+                    logging.error("download_pypi_source crashed for %s==%s", dep, ver)
+                _dl_during = _stats["downloaded"] - _dl_before
+                _vers_total = ver_idx + 1
+                if n_dep_vers >= 40 and _dl_during > 0 and (
+                        _vers_total % 40 == 0 or ver_idx == n_dep_vers - 1):
+                    logging.info("  %s: %d/%d versions | dl:%d skip:%d",
+                                 dep, _vers_total, n_dep_vers,
+                                 _dl_during, _vers_total - _dl_during)
+            _write_library_version(dep, python_version, compatible_versions)
+            all_packages.add(dep)
+            _dl_delta = _stats["downloaded"] - _dl_before
+            if _dl_delta == 0:
+                logging.info("Phase 2 [%d/%d]: %s (%d versions) — cached",
+                             _disc_idx + 1, _disc_total, dep, n_dep_vers)
             else:
-                logging.info("Phase 2 [%d/%d]: %s — binary-only, skipped",
-                             _disc_idx + 1, _disc_total, dep)
+                logging.info("Phase 2 [%d/%d]: %s (%d versions) — %d dl",
+                             _disc_idx + 1, _disc_total, dep, n_dep_vers, _dl_delta)
 
-        logging.info("Phase 2 complete: discovered %d transitive deps | %.0fs",
+        logging.info("Phase 2 complete: discovered %d one-hop dependencies | %.0fs",
                      len(discovered), time.time() - _phase_start_time)
 
         # Phase 3: build available_versions and extract APIs
