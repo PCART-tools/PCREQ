@@ -114,11 +114,15 @@ def remove_elements_with_extra(lst):
     return new_requires_dist
 
 def remove_incompat_python_version(requires_dist, python_version):
-    """Drop dependencies whose PEP 508 marker is incompatible with *python_version*.
+    """Drop dependencies whose ``python_version`` marker is incompatible.
 
-    Evaluates ``; python_version ...`` environment markers against the target
-    Python version.  Entries with incompatible markers are dropped; entries
-    without markers are kept.
+    Entries without markers are always kept.  Only markers that contain
+    ``python_version`` are evaluated; markers without it (``sys_platform``,
+    ``extra``, ``os_name``, etc.) are kept as-is — keeping a pure-platform
+    dependency is harmless (extra dep on other platforms), but dropping a
+    version constraint with a platform marker would make it universal and
+    force unnecessary upgrades (e.g. Darwin-only ``numpy>=1.21.0`` forcing
+    upgrade on Linux).
     """
     new_requires_dist = []
     env = {"python_version": python_version}
@@ -126,14 +130,21 @@ def remove_incompat_python_version(requires_dist, python_version):
         if ";" not in item:
             new_requires_dist.append(item)
             continue
-        req_part, marker_str = item.split(";", 1)
-        try:
-            m = Marker(marker_str.strip())
-            if m.evaluate(env):
-                new_requires_dist.append(item)
-        except Exception:
-            # Malformed marker — keep the dependency (safe default)
+        _req_part, marker_str = item.split(";", 1)
+        marker_str = marker_str.strip()
+        # Markers without python_version are not our concern —
+        # evaluating them with a partial env would incorrectly drop
+        # entries like ``extra == 'alldeps'``.
+        if "python_version" not in marker_str:
             new_requires_dist.append(item)
+        else:
+            try:
+                m = Marker(marker_str)
+                if m.evaluate(env):
+                    new_requires_dist.append(item)
+            except Exception:
+                # Malformed marker — keep the dependency (safe default)
+                new_requires_dist.append(item)
     return new_requires_dist
 
 def get_tree(filename):
@@ -278,25 +289,69 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
     res = {}
     norm_pkg_name = _resolve_pkg_dir(pkg)
     norm_ver_name = norm_ver(version)
+    target_dir = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/"
 
-    # Priority chain: METADATA → egg-info/requires.txt → PyPI JSON → setup.py
+    # Priority chain: setup.py → METADATA → egg-info/requires.txt → PyPI JSON
+    # setup.py is the authoritative source (developer-written); METADATA
+    # supplements with entries not in setup.py.
+    metadata_found = False
+    metadata_is_old = False  # Metadata-Version ≤ 2.0 may lack Requires-Dist
     requires_dist = None
 
-    metadata_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/{norm_pkg_name}-{norm_ver_name}.dist-info/METADATA"
-    if os.path.exists(metadata_path):
-        # Priority 1: .dist-info/METADATA → Requires-Dist
-        try:
-            with open(metadata_path, 'r') as file:
-                metadata = file.read()
-        except OSError:
-            metadata = None
-        if metadata is not None:
-            requires_dist_pattern = r"Requires-Dist: (.+?)(?=\n|$)"
-            requires_dist = re.findall(requires_dist_pattern, metadata)
-    else:
+    # Priority 0: setup.py as authoritative baseline
+    library_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/{norm_pkg_name}"
+    if os.path.exists(library_path):
+        s = get_packname_and_cons_from_setup(library_path)
+        for i in s:
+            key = re.sub(r'\[.*\]', '', i[0]).lower().replace('_', '-')
+            if len(i) == 2:
+                res[key] = i[1].replace("-", ".")
+            else:
+                res[key] = None
+
+    # Priority 1: scan for *.dist-info/METADATA (not fixed path —
+    #   wheel/sdist may use underscore, different case, etc.)
+    # Prefer the dist-info matching the package name; old KB may have
+    # leftover dist-info dirs from pip-installed dependencies.
+    if os.path.isdir(target_dir):
+        candidates = []
+        for item in os.listdir(target_dir):
+            if item.endswith(".dist-info"):
+                candidate = os.path.join(target_dir, item, "METADATA")
+                if os.path.isfile(candidate):
+                    # score: 0 = name match, 1 = no match
+                    pkg_lower = pkg.lower().replace("-", "_")
+                    item_lower = item.lower().replace("-", "_")
+                    score = 0 if item_lower.startswith(pkg_lower) else 1
+                    candidates.append((score, candidate))
+        if candidates:
+            candidates.sort(key=lambda x: x[0])
+            metadata_path = candidates[0][1]
+            metadata_found = True
+            try:
+                with open(metadata_path, 'r') as file:
+                    metadata = file.read()
+            except OSError:
+                metadata = None
+            if metadata is not None:
+                requires_dist_pattern = r"Requires-Dist: (.+?)(?=\n|$)"
+                requires_dist = re.findall(requires_dist_pattern, metadata)
+                # Detect old-format METADATA that predates Requires-Dist
+                mv_match = re.search(
+                    r"^Metadata-Version:\s*([\d.]+)", metadata,
+                    re.MULTILINE | re.IGNORECASE)
+                if mv_match:
+                    try:
+                        metadata_is_old = (
+                            tuple(map(int, mv_match.group(1).split(".")))
+                            <= (2, 0)
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
+    if not metadata_found:
         # Priority 2: .egg-info/requires.txt
         egg_requires = None
-        target_dir = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/"
         if os.path.isdir(target_dir):
             for item in os.listdir(target_dir):
                 if item.endswith('.egg-info'):
@@ -313,8 +368,8 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
             requires_dist = egg_requires
         else:
             # Priority 3: PyPI JSON fallback
-            logging.warning("Falling back to PyPI JSON for %s==%s constraints",
-                            pkg, version)
+            logging.debug("Falling back to PyPI JSON for %s==%s constraints",
+                          pkg, version)
             data, _ = try_read_constraint_json(pkg, version)
             if data is not None:
                 try:
@@ -322,23 +377,27 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
                 except (KeyError, TypeError):
                     requires_dist = None
             else:
-                logging.warning("No constraint JSON for %s==%s", pkg, version)
+                logging.debug("No constraint JSON for %s==%s", pkg, version)
                 requires_dist = None
 
-    # If still no requires_dist (e.g., METADATA had no Requires-Dist lines),
-    # try PyPI JSON one more time
-    if requires_dist is None or len(requires_dist) == 0:
-        logging.warning("No requires_dist in artifact metadata for %s==%s, "
-                         "trying PyPI JSON", pkg, version)
-        data, _ = try_read_constraint_json(pkg, version)
-        if data is not None:
-            try:
-                requires_dist = data['info']['requires_dist']
-            except (KeyError, TypeError):
+    # Fall back to PyPI JSON when:
+    # 1. No artifact metadata was found at all (not metadata_found), OR
+    # 2. Metadata-Version ≤ 2.0, which predates Requires-Dist —
+    #    an empty result means "format too old", not zero-dependency.
+    # Modern METADATA (≥2.1) with empty Requires-Dist IS authoritative.
+    if not metadata_found or metadata_is_old:
+        if requires_dist is None or len(requires_dist) == 0:
+            logging.debug("No requires_dist in artifact metadata for %s==%s, "
+                           "trying PyPI JSON", pkg, version)
+            data, _ = try_read_constraint_json(pkg, version)
+            if data is not None:
+                try:
+                    requires_dist = data['info']['requires_dist']
+                except (KeyError, TypeError):
+                    requires_dist = None
+            else:
+                logging.debug("No constraint data for %s==%s", pkg, version)
                 requires_dist = None
-        else:
-            logging.warning("No constraint data for %s==%s", pkg, version)
-            requires_dist = None
 
     if requires_dist is not None:
         requires_dist = remove_elements_with_extra(requires_dist)
@@ -354,23 +413,16 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
     else:
         new_requires_dist = None
 
+    # METADATA / egg-info / JSON supplements setup.py (does not overwrite)
     if new_requires_dist is not None:
         for i in new_requires_dist:
             try:
                 key = re.sub(r'\[.*\]', '', i[0]).lower().replace('_', '-')
-                res[key] = i[1].replace("-", ".")
-            except Exception:
-                res[i[0].lower().replace('_', '-')] = None
-    else:
-        # Priority 4: setup.py (only when no metadata or JSON available)
-        library_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/{norm_pkg_name}"
-        if os.path.exists(library_path):
-            s = get_packname_and_cons_from_setup(library_path)
-            for i in s:
-                key = re.sub(r'\[.*\]', '', i[0]).lower().replace('_', '-')
-                if len(i) == 2:
+                if key not in res:  # setup.py is authoritative
                     res[key] = i[1].replace("-", ".")
-                else:
+            except Exception:
+                key = i[0].lower().replace('_', '-')
+                if key not in res:
                     res[key] = None
 
     return res 
