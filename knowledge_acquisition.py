@@ -174,8 +174,6 @@ def get_compatible_versions(package_name, python_version):
     compatible_versions.sort(key=parse_version)
     if package_name == "torchvision" and "0.11.0" in compatible_versions:
         compatible_versions.remove("0.11.0")
-    if package_name == "python-dateutil" and compatible_versions[-1] == "2.9.0":
-        compatible_versions.append("2.9.0.post0")
     return compatible_versions
 
 
@@ -295,7 +293,7 @@ def _select_download_urls(package_name, version, python_version):
     return [url for _, url in scored]
 
 
-def _build_fallback_candidates(package_name, version):
+def _build_fallback_candidates(package_name, version, python_version):
     """Return [(url, is_wheel), ...] from PyPI JSON API, sorted by priority.
 
     Same platform-independent priority as _select_download_urls.
@@ -307,13 +305,6 @@ def _build_fallback_candidates(package_name, version):
         if r.status_code != 200:
             return candidates
         data = r.json()
-        # Use a default python_version for PyPI fallback (cp3 pattern match).
-        # Actual version doesn't matter much here — exact cp bump (priority 2→5
-        # or 4→6) is minor compared to any/pure preference.
-        pv = data.get("info", {}).get("requires_python", "") or "3.0"
-        pv_digits = "".join(c for c in pv.split(",")[0].strip(" >=") if c.isdigit())
-        if not pv_digits:
-            pv_digits = "3"
         for u in data.get("urls", []):
             fname = u.get("filename", "")
             url = u.get("url", "")
@@ -326,7 +317,7 @@ def _build_fallback_candidates(package_name, version):
                     continue
                 python_tag, platform_tag, py_major = tag
                 priority = _wheel_priority(python_tag, platform_tag,
-                                           py_major, pv_digits)
+                                           py_major, python_version)
                 if priority < 0:
                     continue
                 candidates.append((priority, url, True))
@@ -360,12 +351,28 @@ def _should_extract(name):
 
     Keeps:
       - ``.py``, ``.pyi``, ``.pyw``, ``.pxi`` source files
-      - ``.dist-info/``, ``.egg-info/``, ``.data/`` metadata directories
+      - ``.dist-info/``, ``.egg-info/`` metadata directories (whole tree)
+      - ``.data/purelib/`` and ``.data/platlib/``: ``.py`` source only
       - ``setup.py``, ``setup.cfg``, ``pyproject.toml`` (build configs)
-    Skips binaries (``.so``, ``.dll``), caches (``.pyc``), data, docs.
+    Skips:
+      - ``.so``, ``.dll``, ``.pyc`` binaries
+      - ``.data/scripts/``, ``.data/headers/``, ``.data/data/`` (non-source)
     """
-    if any(d in name for d in (".dist-info/", ".egg-info/", ".data/")):
+    # .dist-info and .egg-info: keep entire tree
+    if ".dist-info/" in name or name.endswith(".dist-info/"):
         return True
+    if ".egg-info/" in name or name.endswith(".egg-info/"):
+        return True
+
+    # .data/purelib and .data/platlib: keep .py source only
+    if ".data/purelib/" in name or ".data/platlib/" in name:
+        return name.endswith((".py", ".pyi", ".pyw", ".pxi"))
+
+    # .data/ other (scripts, headers, data): skip entirely
+    if ".data/" in name:
+        return False
+
+    # Top-level source files
     if name.endswith((".py", ".pyi", ".pyw", ".pxi")):
         return True
     if os.path.basename(name) in ("setup.py", "setup.cfg", "pyproject.toml"):
@@ -900,7 +907,7 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             fname = os.path.basename(u.split("#")[0].split("?")[0])
             url_sources.append((u, fname.endswith(".whl")))
     else:
-        url_sources = _build_fallback_candidates(package_name, version)
+        url_sources = _build_fallback_candidates(package_name, version, python_version)
 
     if not url_sources:
         if os.path.exists(building_marker):
@@ -1386,6 +1393,34 @@ if __name__ == '__main__':
                 json_path = f"{api_path_prefix}{norm_lib}/{nv}.json"
                 # Step 1: .complete marker — trusted call module source → skip
                 if os.path.exists(json_path + ".complete"):
+                    continue
+                # Step 1.5: weak consistency check for legacy JSON
+                # Rebuild when call_module or top_level.txt contradicts JSON modules.
+                _force_rebuild = False
+                try:
+                    if os.path.getsize(json_path) >= 10:
+                        with open(json_path, 'r') as f:
+                            _legacy_data = json.load(f)
+                        _legacy_modules = set(
+                            m.lower().replace("-", "_")
+                            for m in (_legacy_data.get("modules") or [])
+                        )
+                        if _legacy_modules:
+                            _norm_lib_src = resolve_pkg_dir(lib, library_path_prefix)
+                            _src_dir = f"{library_path_prefix}{_norm_lib_src}/{_norm_lib_src}{nv}"
+                            _public_roots = set()
+                            _tl = _read_top_level_txt(_src_dir, lib)
+                            if _tl:
+                                _public_roots.add(_tl.lower().replace("-", "_"))
+                            if lib in _CALL_MODULE_MAP:
+                                _public_roots.add(
+                                    _CALL_MODULE_MAP[lib].lower().replace("-", "_"))
+                            if _public_roots and not (_legacy_modules & _public_roots):
+                                _force_rebuild = True
+                except (json.JSONDecodeError, OSError, KeyError, FileNotFoundError):
+                    pass
+                if _force_rebuild:
+                    tasks.append((lib, ver))
                     continue
                 # Step 2: legacy check — existing JSON with content → skip
                 try:
