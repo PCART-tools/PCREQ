@@ -1023,6 +1023,41 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                 with open(complete_marker, "w") as _:
                     pass
                 _stats["downloaded"] += 1
+                # Point 25: check for empty source (all .py files are 0 bytes)
+                # Common in CUDA metapackages (nvidia-cublas-cu11 etc.)
+                _py_total = 0
+                for _root, _dirs, _files in os.walk(target_dir):
+                    for _f in _files:
+                        if _f.endswith('.py'):
+                            try:
+                                _py_total += os.path.getsize(
+                                    os.path.join(_root, _f))
+                            except OSError:
+                                pass
+                if _py_total == 0:
+                    # Remove large .whl/.tar.gz archives
+                    for _f in os.listdir(target_dir):
+                        if _f.endswith(('.whl', '.tar.gz', '.zip',
+                                        '.tgz', '.tar.bz2')):
+                            try:
+                                os.remove(os.path.join(target_dir, _f))
+                            except OSError:
+                                pass
+                    # Remove empty .py files
+                    for _root, _dirs, _files in os.walk(target_dir):
+                        for _f in _files:
+                            if _f.endswith('.py'):
+                                try:
+                                    os.remove(os.path.join(_root, _f))
+                                except OSError:
+                                    pass
+                    if os.path.exists(complete_marker):
+                        os.remove(complete_marker)
+                    _mark_no_source(target_dir,
+                                    "all .py files are empty — binary-only package")
+                    _stats["failed"] += 1
+                    _stats["downloaded"] -= 1
+                    return
         else:
             if os.path.exists(building_marker):
                 os.remove(building_marker)
@@ -1277,7 +1312,13 @@ if __name__ == '__main__':
                     logging.info("  %s: %d/%d versions | dl:%d skip:%d",
                                  pkg, _vers_total, n_vers, _dl_during,
                                  _vers_total - _dl_during)
-            _write_library_version(pkg, python_version, compatible_versions)
+            # Point 25: filter out .no_source versions from library_version.json
+            _filtered = [v for v in compatible_versions
+                         if not os.path.exists(
+                             f"{library_path_prefix}{resolve_pkg_dir(pkg, library_path_prefix)}/"
+                             f"{resolve_pkg_dir(pkg, library_path_prefix)}{norm_ver(v)}"
+                             "/.no_source")]
+            _write_library_version(pkg, python_version, _filtered)
             _dl_delta = _stats["downloaded"] - _dl_before
             if _dl_delta == 0:
                 logging.info("Phase 1 [%d/%d]: %s (%d versions) — cached",
@@ -1321,6 +1362,21 @@ if __name__ == '__main__':
                 logging.info("Phase 2 [%d/%d]: %s — no compatible versions",
                              _disc_idx + 1, _disc_total, dep)
                 continue
+            # Point 26: skip binary-only transitive deps (no sdist on PyPI)
+            _has_sdist = False
+            try:
+                _r = requests.get(f"https://pypi.org/pypi/{dep}/json",
+                                  timeout=30)
+                if _r.status_code == 200:
+                    _urls = _r.json().get("urls", [])
+                    _has_sdist = any(
+                        u.get("packagetype") == "sdist" for u in _urls)
+            except requests.RequestException:
+                pass
+            if not _has_sdist:
+                logging.info("Phase 2 [%d/%d]: %s — binary-only, skipping",
+                             _disc_idx + 1, _disc_total, dep)
+                continue
             _dl_before = _stats["downloaded"]
             for ver_idx, ver in enumerate(compatible_versions):
                 _dep_json = f"{constraint_path_prefix}{dep}/{dep}{ver}/{dep}.json"
@@ -1344,7 +1400,13 @@ if __name__ == '__main__':
                     logging.info("  %s: %d/%d versions | dl:%d skip:%d",
                                  dep, _vers_total, n_dep_vers,
                                  _dl_during, _vers_total - _dl_during)
-            _write_library_version(dep, python_version, compatible_versions)
+            # Point 25: filter out .no_source versions from library_version.json
+            _filtered = [v for v in compatible_versions
+                         if not os.path.exists(
+                             f"{library_path_prefix}{resolve_pkg_dir(dep, library_path_prefix)}/"
+                             f"{resolve_pkg_dir(dep, library_path_prefix)}{norm_ver(v)}"
+                             "/.no_source")]
+            _write_library_version(dep, python_version, _filtered)
             all_packages.add(dep)
             _dl_delta = _stats["downloaded"] - _dl_before
             if _dl_delta == 0:
@@ -1391,6 +1453,11 @@ if __name__ == '__main__':
             for ver in available_version.get(lib, []):
                 nv = norm_ver(ver)
                 json_path = f"{api_path_prefix}{norm_lib}/{nv}.json"
+                # Point 25: skip .no_source versions — no Python source available
+                _nl_src = resolve_pkg_dir(lib, library_path_prefix)
+                _src_dir = f"{library_path_prefix}{_nl_src}/{_nl_src}{nv}"
+                if os.path.exists(os.path.join(_src_dir, ".no_source")):
+                    continue
                 # Step 1: .complete marker — trusted call module source → skip
                 if os.path.exists(json_path + ".complete"):
                     continue
