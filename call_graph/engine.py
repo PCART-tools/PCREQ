@@ -223,7 +223,7 @@ def map_it(root_path, sources, no_trimming, exclude_namespaces, exclude_function
             file_ast_trees.append((source, language.get_tree(source, lang_params)))
         except Exception as ex:
             if skip_parse_errors:
-                logging.warning("Could not parse %r. (%r) Skipping...", source, ex)
+                logging.debug("Could not parse %r. (%r) Skipping...", source, ex)
             else:
                 raise ex
     file_groups = []
