@@ -65,24 +65,19 @@ def _scan(kb_path):
             # Check source: any Python package or .py file exists
             has_source = _has_source(ver_path)
 
-            if os.path.exists(json_path):
-                lib_ok += 1
-                ok += 1
-            elif has_source:
-                # Source downloaded but API not extracted yet
-                lib_ok += 1
-                ok += 1
-            elif os.path.exists(no_source):
-                lib_skipped += 1
-                skipped += 1
-            elif os.path.exists(os.path.join(ver_path, ".building")):
-                # Point 13: .building without .complete → interrupted build
+            # Failure/abnormal markers checked FIRST — they override success
+            if os.path.exists(os.path.join(ver_path, ".building")) and \
+                    not os.path.exists(os.path.join(ver_path, ".complete")):
+                # .building without .complete → interrupted build
                 lib_failed += 1
                 failed += 1
                 lib_issues.append({"library": lib, "version": ver,
                                    "status": "interrupted",
                                    "reason": "build interrupted — .building marker left",
                                    "fix": "delete directory and re-download"})
+            elif os.path.exists(no_source):
+                lib_skipped += 1
+                skipped += 1
             elif os.path.exists(json_failed):
                 lib_failed += 1
                 failed += 1
@@ -90,6 +85,13 @@ def _scan(kb_path):
                                    "status": "empty_extraction",
                                    "reason": "API extraction produced empty modules",
                                    "fix": "check source structure and re-download"})
+            elif os.path.exists(json_path):
+                lib_ok += 1
+                ok += 1
+            elif has_source:
+                # Source downloaded but API not extracted yet
+                lib_ok += 1
+                ok += 1
             else:
                 # No markers at all — download likely failed or not attempted
                 artifacts = [f for f in os.listdir(ver_path)
