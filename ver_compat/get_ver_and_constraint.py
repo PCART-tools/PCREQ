@@ -76,7 +76,7 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
                 if in_full_kb:
                     condidate_version.append(target_ver_norm)
                 else:
-                    condidate_version.insert(0, target_ver_norm)
+                    condidate_version.append(target_ver_norm)
                 flag = True
         else:
             try:
