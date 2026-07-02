@@ -7,6 +7,8 @@ from call_graph.get_FDG import *
 import platform, argparse, os, json, time, requests, logging, tempfile, uuid
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
 from packaging.version import parse as parse_version
+from packaging.utils import parse_wheel_filename
+from packaging.tags import cpython_tags
 import tarfile
 import zipfile
 import shutil
@@ -136,6 +138,18 @@ def filter_versions(version_list):
             pass
     return result
 
+# Point 29: packaging.tags-based wheel compatibility (runtime platform)
+def _is_runtime_compat_wheel(filename, compat_tags):
+    """Return True if *filename* wheel is compatible with the current platform."""
+    if not filename.endswith(".whl"):
+        return False
+    try:
+        _, _, _, tags = parse_wheel_filename(filename)
+    except Exception:
+        return False
+    return any(t in compat_tags for t in tags)
+
+
 def get_compatible_versions(package_name, python_version):
     url = f"https://pypi.org/pypi/{package_name}/json"
     try:
@@ -146,7 +160,17 @@ def get_compatible_versions(package_name, python_version):
     new_python_version = python_version.replace(".", "")
     if "releases" not in response:
         return []
+    # Pre-compute runtime platform compatibility tags (Point 29)
+    _ver_major, _ver_minor = (int(python_version.split('.')[0]),
+                               int(python_version.split('.')[1]))
+    _compat_tags = set(cpython_tags((_ver_major, _ver_minor)))
     for version, files in response["releases"].items():
+        # Point 29: skip versions with no runtime-compatible artifact
+        if not any(f.get("packagetype") == "sdist"
+                   or _is_runtime_compat_wheel(f.get("filename", ""),
+                                                _compat_tags)
+                   for f in files if f):
+            continue
         for file_info in files:
             if file_info.get("python_version"):
                 try:
@@ -181,54 +205,28 @@ def get_compatible_versions(package_name, python_version):
 # Download infrastructure
 # ---------------------------------------------------------------------------
 
-def _parse_wheel_tag(filename):
-    """Parse wheel filename per PEP 427 (last 3 segments).
+def _wheel_priority(filename, python_version):
+    """Return pip-native priority (position in compat tag list, 0 = best).
 
-    Returns ``(python_tag, platform_tag, py_major)`` or ``None`` if not a wheel.
+    Returns -1 for incompatible wheels, 999 for sdist.
+    Uses packaging.tags.cpython_tags for pip's native ordering (Point 29).
     """
     if not filename.endswith(".whl"):
-        return None
-    parts = filename[:-4].split("-")
-    if len(parts) < 4:
-        return None
-    python_tag = parts[-3]
-    platform_tag = parts[-1]
-    tags = set(python_tag.split("."))
-    py_major = 3 if any(t.startswith(("py3", "cp3")) for t in tags) else \
-               2 if any(t.startswith(("py2", "cp2")) for t in tags) else 0
-    return python_tag, platform_tag, py_major
-
-
-def _wheel_priority(python_tag, platform_tag, py_major, python_version):
-    """Return sort priority for a Python 3 wheel, or -1 to skip.
-
-    Priority (lower = better):
-      1: py3-none-any / py2.py3-none-any  (pure universal)
-      2: cp{ver}-*-any                      (exact cp version, pure)
-      3: other py3/cp3 + any                (Python 3 compatible, pure)
-      4: py3-none-{platform}                (universal, platform binary)
-      5: cp{ver}-*-{platform}               (exact cp version, platform binary)
-      6: other py3/cp3 + {platform}         (Python 3 compatible, platform binary)
-    """
-    if py_major != 3:
+        return -1  # sdist handled separately by caller
+    major, minor = int(python_version.split('.')[0]), int(python_version.split('.')[1])
+    compat = list(cpython_tags((major, minor)))
+    compat_set = set(compat)
+    try:
+        _, _, _, tags = parse_wheel_filename(filename)
+    except Exception:
         return -1
-    tags = set(python_tag.split("."))
-    is_any = (platform_tag == "any")
-    is_exact_ver = f"cp{python_version.replace('.', '')}" in tags
-    is_py3_universal = "py3" in tags
-
-    if is_any:
-        if is_py3_universal:
-            return 1  # py3-none-any or py2.py3-none-any
-        if is_exact_ver:
-            return 2  # cp{ver}-*-any
-        return 3      # other py3/cp3 + any
-    else:
-        if is_py3_universal:
-            return 4  # py3-none-{platform}
-        if is_exact_ver:
-            return 5  # cp{ver}-*-{platform}
-        return 6      # other py3/cp3 + {platform}
+    best = 99999
+    for t in tags:
+        if t in compat_set:
+            pos = compat.index(t)
+            if pos < best:
+                best = pos
+    return best if best < 99999 else -1
 
 
 def _select_download_urls(package_name, version, python_version):
@@ -276,16 +274,11 @@ def _select_download_urls(package_name, version, python_version):
         if filename.endswith((".exe", ".msi", ".dmg", ".rpm", ".deb")):
             continue
         if pkg_type == "bdist_wheel":
-            tag = _parse_wheel_tag(filename)
-            if tag is None:
-                continue
-            python_tag, platform_tag, py_major = tag
-            priority = _wheel_priority(python_tag, platform_tag,
-                                       py_major, python_version)
+            priority = _wheel_priority(filename, python_version)
             if priority < 0:
-                continue  # Python 2, skip
+                continue
         elif pkg_type == "sdist":
-            priority = 7
+            priority = 999
         else:
             continue
         scored.append((priority, url))
@@ -312,17 +305,12 @@ def _build_fallback_candidates(package_name, version, python_version):
                 continue
             pkg_type = u.get("packagetype", "")
             if pkg_type == "bdist_wheel":
-                tag = _parse_wheel_tag(fname)
-                if tag is None:
-                    continue
-                python_tag, platform_tag, py_major = tag
-                priority = _wheel_priority(python_tag, platform_tag,
-                                           py_major, python_version)
+                priority = _wheel_priority(fname, python_version)
                 if priority < 0:
                     continue
                 candidates.append((priority, url, True))
             elif pkg_type == "sdist":
-                candidates.append((7, url, False))
+                candidates.append((999, url, False))
         candidates.sort(key=lambda x: (x[0], x[1]))
     except requests.RequestException:
         pass
@@ -1509,7 +1497,7 @@ if __name__ == '__main__':
         cleanup_temp_files()
         _set_worker_knowledge_path(knowledge_path)
         with Pool(processes=pool_size, initializer=_init_worker) as pool:
-            for _lib, _ver, ok in pool.map(task, tasks):
+            for _lib, _ver, ok in pool.imap_unordered(task, tasks):
                 _task_done += 1
                 if not ok:
                     _task_fail += 1
