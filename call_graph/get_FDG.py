@@ -274,10 +274,36 @@ def _resolve_pkg_dir(pkg):
 
 
 def try_read_constraint_json(pkg, version):
-    """Read constraint JSON, trying PEP 503 name then underscore fallback."""
+    """Read constraint JSON, trying PEP 503 name then underscore fallback.
+
+    If the JSON is not found locally, download it from PyPI first
+    (then retry the read).  This mirrors the v1.0.1 behaviour and
+    prevents silent loss of dependency data when the KB is missing
+    a specific version.
+    """
     norm_name = norm_pkg(pkg)
     alt_name = pkg.lower().replace('-', '_')
     nv = norm_ver(version)
+    for name in (norm_name, alt_name):
+        json_path = f"{constraint_path_prefix}{name}/{name}{nv}/{name}.json"
+        if os.path.isfile(json_path):
+            try:
+                with open(json_path, 'r') as file:
+                    return json.load(file), None
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Point 34: download from PyPI when not found locally
+    logging.debug("Constraint JSON not found locally, downloading: %s==%s",
+                  pkg, version)
+    try:
+        download_from_data(pkg, version)
+    except Exception:
+        logging.debug("Failed to download constraint for %s==%s", pkg, version,
+                      exc_info=True)
+        return None, None
+
+    # Retry after download
     for name in (norm_name, alt_name):
         json_path = f"{constraint_path_prefix}{name}/{name}{nv}/{name}.json"
         if os.path.isfile(json_path):
