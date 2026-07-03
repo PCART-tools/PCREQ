@@ -132,9 +132,13 @@ def remove_incompat_python_version(requires_dist, python_version):
             continue
         _req_part, marker_str = item.split(";", 1)
         marker_str = marker_str.strip()
-        # Markers without python_version are not our concern —
-        # evaluating them with a partial env would incorrectly drop
-        # entries like ``extra == 'alldeps'``.
+        # Point 30: extra markers are optional deps — pip won't install
+        # them by default, so drop them from constraints.
+        if "extra" in marker_str:
+            continue
+        # Other non-python_version markers (sys_platform, os_name, etc.)
+        # are kept — dropping them would make a platform-specific
+        # constraint universal and force unnecessary upgrades.
         if "python_version" not in marker_str:
             new_requires_dist.append(item)
         else:
@@ -358,9 +362,35 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
                     req_path = os.path.join(target_dir, item, 'requires.txt')
                     if os.path.isfile(req_path):
                         try:
+                            egg_requires = []
                             with open(req_path, 'r') as f:
-                                egg_requires = [l.strip() for l in f.read().split('\n')
-                                                if l.strip() and not l.strip().startswith('[')]
+                                lines = f.read().split('\n')
+                            _i = 0
+                            while _i < len(lines):
+                                _line = lines[_i].strip()
+                                if not _line:
+                                    _i += 1
+                                    continue
+                                # Point 31: [extra_name] → stop (but [:env] is OK)
+                                if _line.startswith('[') and not _line.startswith('[:'):
+                                    break
+                                # [:env_marker] → prepend to next line
+                                if _line.startswith('[:'):
+                                    _cond = _line[2:-1]
+                                    _i += 1
+                                    if _i < len(lines) and lines[_i].strip():
+                                        _dep = lines[_i].strip()
+                                        _dep_name = _dep.split('<')[0].split('>')[0].split('=')[0].split('!')[0].split(';')[0].strip()
+                                        _dep_rest = _dep[len(_dep_name):]
+                                        _dep_name = _dep_name.replace('_', '-')
+                                        egg_requires.append(f"{_dep_name}{_dep_rest} ; {_cond}")
+                                else:
+                                    # Normalize underscore → hyphen in dep name
+                                    _dep_name = _line.split('<')[0].split('>')[0].split('=')[0].split('!')[0].split(';')[0].strip()
+                                    _dep_rest = _line[len(_dep_name):]
+                                    _dep_name = _dep_name.replace('_', '-')
+                                    egg_requires.append(f"{_dep_name}{_dep_rest}")
+                                _i += 1
                         except OSError:
                             pass
                     break

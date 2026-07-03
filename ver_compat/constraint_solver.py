@@ -16,6 +16,8 @@ def process_dependencies(deps):
     return smt_deps
 
 def create_dependency_expr(dep_pkg, smt_vers, int_dict, order_dict):
+    if dep_pkg not in order_dict:
+        return And(True)  # Point 30: dep not in KB, skip silently
     if len(smt_vers) == 1 and smt_vers[0] == 'True':
         return Or(*[int_dict[dep_pkg] == ver_id for ver_id in order_dict[dep_pkg].values()])
     
