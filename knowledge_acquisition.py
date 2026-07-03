@@ -1346,13 +1346,32 @@ if __name__ == '__main__':
             version_ls = {}
         known_libs = set(all_packages)
         discovered = set()
+        # Point 33: incremental phase-2 discovery — skip libs/versions
+        # already processed in previous runs, tracked via .phase2_done
+        _phase2_done_path = f"{version_path_prefix}.phase2_done"
+        try:
+            with open(_phase2_done_path) as f:
+                phase2_done = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            phase2_done = {}
         for lib in list(all_packages):
-            for ver in version_ls.get(lib, {}).get(python_version, []):
+            known_versions = set(version_ls.get(lib, {}).get(python_version, []))
+            processed_versions = set(
+                phase2_done.get(lib, {}).get(python_version, []))
+            new_versions = known_versions - processed_versions
+            if not new_versions:
+                continue
+            for ver in sorted(new_versions):
                 constraint = get_library_constraint_from_metadata(lib, ver, python_version)
                 for dep in constraint:
                     base_dep = dep.split('[')[0].lower().replace('_', '-')
                     if base_dep not in known_libs and base_dep not in discovered:
                         discovered.add(base_dep)
+            phase2_done.setdefault(lib, {})[python_version] = sorted(known_versions)
+        # Persist updated tracking file
+        with open(_phase2_done_path + ".tmp", "w") as f:
+            json.dump(phase2_done, f, sort_keys=True)
+        os.replace(_phase2_done_path + ".tmp", _phase2_done_path)
         # Download and register newly discovered libraries
         _disc_total = len(discovered)
         for _disc_idx, dep in enumerate(sorted(discovered)):
