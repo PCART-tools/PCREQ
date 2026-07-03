@@ -8,7 +8,7 @@ import platform, argparse, os, json, time, requests, logging, tempfile, uuid
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
 from packaging.version import parse as parse_version
 from packaging.utils import parse_wheel_filename
-from packaging.tags import cpython_tags
+from packaging.tags import cpython_tags, compatible_tags
 import tarfile
 import zipfile
 import shutil
@@ -164,6 +164,12 @@ def get_compatible_versions(package_name, python_version):
     _ver_major, _ver_minor = (int(python_version.split('.')[0]),
                                int(python_version.split('.')[1]))
     _compat_tags = set(cpython_tags((_ver_major, _ver_minor)))
+    # Point 32: supplement with pure-python any-platform tags from pip
+    _interp = f'cp{_ver_major}{_ver_minor}'
+    for t in compatible_tags(python_version=(_ver_major, _ver_minor),
+                              interpreter=_interp):
+        if '-none-any' in str(t):
+            _compat_tags.add(t)
     for version, files in response["releases"].items():
         # Point 29: skip versions with no runtime-compatible artifact
         if not any(f.get("packagetype") == "sdist"
@@ -216,6 +222,12 @@ def _wheel_priority(filename, python_version):
     major, minor = int(python_version.split('.')[0]), int(python_version.split('.')[1])
     compat = list(cpython_tags((major, minor)))
     compat_set = set(compat)
+    # Point 32: supplement with pure-python any-platform tags from pip
+    _interp = f'cp{major}{minor}'
+    for t in compatible_tags(python_version=(major, minor), interpreter=_interp):
+        if '-none-any' in str(t) and t not in compat_set:
+            compat.append(t)
+            compat_set.add(t)
     try:
         _, _, _, tags = parse_wheel_filename(filename)
     except Exception:
