@@ -256,108 +256,74 @@ def shortenPath(api_dict, library, version, library_path_prefix): #lst是传入�
     prefix = f"{library_path_prefix}{norm_lib}/{norm_lib}{version}/"
     new_dict = api_dict.copy()
     init_files = find_init_files(library_path)
-    #py_files = get_path_by_extension(library_path, flag='.py')
-    #print(init_files)
 
-    '''for py_file in py_files:
-        import_apis = paths_of_import_file(py_file)
-        api_prefix = py_file.replace(prefix,'.')
-        if api_prefix.endswith('/__init__.py'):
-            api_prefix.rstrip('/__init__.py')  
-            api_prefix.replace('/','.')
-        else:
-            api_prefix.rstrip('.py')
-            api_prefix.replace('/','.')
-        for import_api in import_apis:
-            if import_api.endswith('.*'):
-                import_api = import_api.rstrip('.*')
-                print(import_api)
-            else:
-                new_api = f"{api_prefix}.{import_api.split('.')[-1]}"
-                for api in new_dict:
-                    if api.endswith(f'{import_api}'):
-                        map_api = api
-                        break
-                    else:
-                        if f'{import_api}' in api:
-                            map_api = api
-                if new_api not in new_dict:
-                    new_dict[new_api] = map_api
-'''
+    # Point 35: cache (init_file, currentLevel) -> importDict to avoid
+    # repeated FromImport visits while preserving the original semantics.
+    _import_cache = {}
+
     for init_file in init_files:
         try:
-            root=getAst(init_file)
-        except Exception as e:
+            root = getAst(init_file)
+        except Exception:
             continue
+
+        api_prefix = init_file.replace(prefix, '')
+        if api_prefix.endswith('/__init__.py'):
+            api_prefix = api_prefix.replace('/__init__.py', '').replace('/', '.')
+        else:
+            api_prefix = api_prefix.replace('.py', '').replace('/', '.')
+
         for api in list(new_dict.keys()):
-            #print(api)
             try:
                 currentLevel = f"{api.split('.')[-2]}.py"
-            except:
+            except Exception:
                 continue
-            
-            obj=FromImport(currentLevel)
-            obj.visit(root)
-            replaceKey1=''
-            replaceVal1=''
-            replaceKey2=''
-            replaceVal2=''
-            for key,value in obj.importDict.items():
-                # print(key, '-->', value)
-                if key[-1]=='*':
-                    key=key.rstrip('*')
+
+            cache_key = (init_file, currentLevel)
+            if cache_key not in _import_cache:
+                obj = FromImport(currentLevel)
+                obj.visit(root)
+                _import_cache[cache_key] = obj.importDict.copy()
+
+            importDict = _import_cache[cache_key]
+
+            replaceKey1 = ''
+            replaceVal1 = ''
+            replaceKey2 = ''
+            replaceVal2 = ''
+            for key, value in importDict.items():
+                if key[-1] == '*':
+                    key = key.rstrip('*')
                     if key in api:
-                        replaceKey1=key
-                        replaceVal1=''
+                        replaceKey1 = key
+                        replaceVal1 = ''
                 elif key in api:
-                    replaceKey2=key
-                    replaceVal2=value
+                    replaceKey2 = key
+                    replaceVal2 = value
 
             new_api = None
-            if replaceKey2: #优先使用第二种替换方式
-                new_api=api.replace(replaceKey2,replaceVal2)
+            if replaceKey2:  # 优先使用第二种替换方式
+                new_api = api.replace(replaceKey2, replaceVal2)
                 if not new_api.startswith(library_call_module):
-                    api_prefix = init_file.replace(prefix,'')
-                    if api_prefix.endswith('/__init__.py'):
-                        #print(api_prefix)
-                        api_prefix = api_prefix.replace('/__init__.py', '')  
-                        #print(api_prefix)
-                        api_prefix = api_prefix.replace('/','.')
-                    else:
-                        api_prefix = api_prefix.replace('.py', '')
-                        #print(api_prefix)
-                        api_prefix = api_prefix.replace('/','.')
-                    #print(replaceKey2, replaceVal2)
-                    append_str = new_api.replace(replaceKey2,'')
-                    new_api=f"{api_prefix}.{append_str}"
-                    new_api=new_api.replace('..','.')
-                    #print(new_api)
+                    append_str = new_api.replace(replaceKey2, '')
+                    new_api = f"{api_prefix}.{append_str}"
+                    new_api = new_api.replace('..', '.')
             elif replaceKey1:
-                new_api=api.replace(replaceKey1,replaceVal1)
+                new_api = api.replace(replaceKey1, replaceVal1)
                 if not new_api.startswith(library_call_module):
-                    api_prefix = init_file.replace(prefix,'')
-                    if api_prefix.endswith('/__init__.py'):
-                        #print(api_prefix)
-                        api_prefix = api_prefix.replace('/__init__.py', '')  
-                        #print(api_prefix)
-                        api_prefix = api_prefix.replace('/','.')
-                    else:
-                        api_prefix = api_prefix.replace('.py', '')
-                        api_prefix = api_prefix.replace('/','.')
-                    #print(replaceKey1, replaceVal1)
-                    append_str = new_api.replace(replaceKey1,'')
-                    #print(append_str)
-                    new_api=f"{api_prefix}.{append_str}"
-                    new_api=new_api.replace('..','.')
+                    append_str = new_api.replace(replaceKey1, '')
+                    new_api = f"{api_prefix}.{append_str}"
+                    new_api = new_api.replace('..', '.')
+
             if not isinstance(new_dict[api], str) and new_api is not None:
                 if new_api not in new_dict:
-                    new_dict[new_api] = api        
+                    new_dict[new_api] = api
             elif new_api is not None:
-                #print(init_file, api, new_api)
                 if new_api not in new_dict:
                     new_dict[new_api] = new_dict[api]
-                        
+
     return new_dict
+
 
 def load_config(config_path):
     # config文件是一个JSON格式文件
