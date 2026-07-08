@@ -359,7 +359,6 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                     partc = [start_library_path, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + ".json", "--entry-functions", ls]
                 else:
                     split_path = start_library_path.split('/')
-                    print(split_path)
 
                     # 去除最后两个部分
                     result = '/'.join(split_path[:-2])
@@ -535,6 +534,7 @@ def get_all_library_info(library_path, library_call_module, version, lib):
 
 def is_target_library_code_conflict(proj_path, target_project, target_library, start_version, target_version, start_library_path, target_library_path, target_library_call_module, proj, path, target_proj_dependency, python_version):
     res = False
+    source_root = target_library_path[:target_library_path.rfind('/')]
     if target_project == proj:
         logging.info(f"Checking {target_project} is compatible with {target_library}{target_version}?...")
     else:
@@ -637,7 +637,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 continue
             # 解决误报的问题，可以查找import中是否有定义
             flag = 0
-            api_path = target_library_path + slash + transform_and_remove_last_segment(module.replace(target_library_call_module+'.', '')) + '.py'
+            api_path = source_root + slash + transform_and_remove_last_segment(module) + '.py'
             if os.path.exists(api_path):
                 import_api_names = paths_of_import_file(api_path)
                 api_last_name = module.split(".")[-1]
@@ -660,7 +660,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
             #解决sklearn.metrics.regression.mean_squared_error找不到的问题
             flag = 0
             if "." in new_module:
-                init_path = target_library_path + slash + transform_and_remove_last_segment(new_module) + slash + '__init__.py'
+                init_path = source_root + slash + transform_and_remove_last_segment(new_module) + slash + '__init__.py'
                 #print(init_path)
                 if os.path.exists(init_path):
                     xxx = paths_of_import_file(init_path)
@@ -685,8 +685,8 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                             flag = 1
                             break
             else:
-                init_path = target_library_path + slash + '__init__.py'
-                if os.path.exists(target_library_path + slash + '__init__.py'):
+                init_path = source_root + slash + '__init__.py'
+                if os.path.exists(source_root + slash + '__init__.py'):
                     xxx = paths_of_import_file(init_path)
                     for xx in xxx:
                         if xx.split(".")[-1] == new_module.split(".")[-1]:
@@ -712,9 +712,9 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 continue
             # 解决误报的问题，可以查找import中是否有定义
             flag = 0
-            api_path = target_library_path + slash + transform_and_remove_last_segment(module.replace(target_library_call_module+'.', '')) + '.py'
-            if os.path.exists(api_path):
-                import_api_names = paths_of_import_file(api_path)
+            api_path2 = source_root + slash + transform_and_remove_last_segment(module) + '.py'
+            if os.path.exists(api_path2):
+                import_api_names = paths_of_import_file(api_path2)
                 api_last_name = module.split(".")[-1]
                 for x in import_api_names:
                     if x.endswith(api_last_name):
@@ -796,7 +796,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 flag = 0
                 for i in target_api_dict["classes"].keys():
                     if api_last_name in i[0]:
-                        target_class_decorator_path = target_library_path + slash + transform_and_remove_last_segment(i[0]) + '.py'
+                        target_class_decorator_path = source_root + slash + transform_and_remove_last_segment(i[0]) + '.py'
                         if not isinstance(target_api_dict['classes'][f"{target_library_call_module}.{class_api}"], str):
                             target_class_decorator = extract_lines(target_class_decorator_path, target_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"]-1)
                         else:
@@ -845,7 +845,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 # 解决误报的问题，可以查找import中是否有定义
                 #解决_tqdm_notebook
                 flag = 0
-                api_path = target_library_path + slash + transform_and_remove_last_segment(class_api) + '.py'
+                api_path = source_root + slash + transform_and_remove_last_segment(class_api) + '.py'
                 if os.path.exists(api_path):
                     import_api_names = paths_of_import_file(api_path)
                     class_api_last_name = class_api.split(".")[-1]
@@ -938,7 +938,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                     parts = i[0].split(".")
                     new_i = '.'.join(parts[1:])
                     if i[0].endswith(f".{api_last_name}"):
-                        target_functions_decorator_path = target_library_path + slash + transform_and_remove_last_segment(new_i) + '.py'
+                        target_functions_decorator_path = source_root + slash + transform_and_remove_last_segment(i[0]) + '.py'
                         if not isinstance(target_api_dict['functions'][i[0]], str):
                             target_functions_decorator = extract_lines(target_functions_decorator_path, target_api_dict['functions'][i[0]]["lineno"]-1)
                         else:
@@ -1055,7 +1055,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 # 解决误报的问题，可以查找import中是否有定义
                 #解决_tqdm_notebook
                 flag = 0            
-                api_path = target_library_path + slash + transform_and_remove_last_segment(new_api) + '.py'
+                api_path = source_root + slash + transform_and_remove_last_segment(new_api) + '.py'
                 if os.path.exists(api_path):
                     import_api_names = paths_of_import_file(api_path)
                     for x in import_api_names:
