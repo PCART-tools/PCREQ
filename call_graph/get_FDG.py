@@ -132,11 +132,18 @@ def remove_incompat_python_version(requires_dist, python_version):
             continue
         _req_part, marker_str = item.split(";", 1)
         marker_str = marker_str.strip()
-        # Other non-python_version markers (sys_platform, os_name, etc.)
-        # are kept — dropping them would make a platform-specific
-        # constraint universal and force unnecessary upgrades.
+        # Non-python_version markers (sys_platform, os_name, etc.)
+        # are evaluated against the current platform so that
+        # platform-specific dependencies (e.g. colorama on Windows,
+        # appnope on macOS) are not included on other platforms.
         if "python_version" not in marker_str:
-            new_requires_dist.append(item)
+            try:
+                m = Marker(marker_str)
+                if m.evaluate():
+                    new_requires_dist.append(item)
+            except Exception:
+                # Malformed marker — keep the dependency (safe default)
+                new_requires_dist.append(item)
         else:
             try:
                 m = Marker(marker_str)
