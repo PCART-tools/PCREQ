@@ -132,10 +132,6 @@ def remove_incompat_python_version(requires_dist, python_version):
             continue
         _req_part, marker_str = item.split(";", 1)
         marker_str = marker_str.strip()
-        # Point 30: extra markers are optional deps — pip won't install
-        # them by default, so drop them from constraints.
-        if "extra" in marker_str:
-            continue
         # Other non-python_version markers (sys_platform, os_name, etc.)
         # are kept — dropping them would make a platform-specific
         # constraint universal and force unnecessary upgrades.
@@ -150,6 +146,23 @@ def remove_incompat_python_version(requires_dist, python_version):
                 # Malformed marker — keep the dependency (safe default)
                 new_requires_dist.append(item)
     return new_requires_dist
+
+def filter_extra_markers(requires_dist):
+    """Drop dependencies with ``extra`` markers (optional deps pip won't install).
+
+    Only called in the Z3 constraint path, not in FDG/conflict-detection path.
+    FDG needs extra edges for complete dependency graph connectivity.
+    """
+    result = []
+    for item in requires_dist:
+        if ";" not in item:
+            result.append(item)
+            continue
+        _req_part, marker_str = item.split(";", 1)
+        if "extra" in marker_str.strip():
+            continue
+        result.append(item)
+    return result
 
 def get_tree(filename):
     def get_tree_with_feature_version(filename, feature_version=None):
@@ -315,7 +328,7 @@ def try_read_constraint_json(pkg, version):
     return None, None
 
 
-def get_library_constraint_from_metadata(pkg, version, python_version):
+def get_library_constraint_from_metadata(pkg, version, python_version, filter_extras=True):
     res = {}
     norm_pkg_name = _resolve_pkg_dir(pkg)
     norm_ver_name = norm_ver(version)
@@ -458,6 +471,8 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
     if requires_dist is not None:
         requires_dist = remove_elements_with_extra(requires_dist)
         requires_dist = remove_incompat_python_version(requires_dist, python_version)
+        if filter_extras:
+            requires_dist = filter_extra_markers(requires_dist)
 
         new_requires_dist = split_and_take_first_part(requires_dist)
         for i in range(len(requires_dist)):
@@ -486,7 +501,7 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
 def get_library_dependency_from_metadata(pkg, version, python_version):
     res = []
 
-    library_constraint = get_library_constraint_from_metadata(pkg, version, python_version)
+    library_constraint = get_library_constraint_from_metadata(pkg, version, python_version, filter_extras=False)
     for library in library_constraint:
         res.append(library)
 

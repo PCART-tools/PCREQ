@@ -934,9 +934,6 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 api_last_name = new_api.split(".")[-1]
                 flag = 0
                 for i in target_api_dict["functions"].items():
-                    #new_i = i[0].replace(target_library_call_module+'.', '')
-                    parts = i[0].split(".")
-                    new_i = '.'.join(parts[1:])
                     if i[0].endswith(f".{api_last_name}"):
                         target_functions_decorator_path = source_root + slash + transform_and_remove_last_segment(i[0]) + '.py'
                         if not isinstance(target_api_dict['functions'][i[0]], str):
