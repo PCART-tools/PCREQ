@@ -57,8 +57,12 @@ def upgrade_with_conflict_handling(config, target_project, target_library, targe
         version_ls = json.load(file)
     candidate_versions = version_ls[target_library][python_version]
 
+    def _is_prerelease(v):
+        return any(t in v.lower() for t in ('rc', 'dev', 'alpha', 'beta'))
+
     filtered_versions = [v for v in reversed(candidate_versions)
-                         if compare_version(v, config['startVersion']) and not compare_version(v, target_version) and v != target_version]
+                         if compare_version(v, config['startVersion']) and not compare_version(v, target_version) and v != target_version
+                         and not _is_prerelease(v)]
     filtered_versions.append(config['startVersion'])
 
     for version in filtered_versions:

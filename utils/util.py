@@ -89,7 +89,13 @@ def is_version_compat(proj_cons, lib_cons):
     proj_cons_clean = re.sub(r'\+[^,<>=~!\s]*', '', proj_cons)
     lib_cons_clean = re.sub(r'\+[^,<>=~!\s]*', '', lib_cons)
 
-    # Tier 1: Strip letters, quotes, fix commas (primary path — legacy compatible)
+    # Tier 1: PEP 440 passthrough (primary — handles pre/post/rc/dev release)
+    try:
+        return proj_cons_clean in SpecifierSet(lib_cons_clean)
+    except Exception:
+        pass
+
+    # Tier 2: Strip letters, quotes, fix commas (legacy fallback for non-standard versions)
     new_proj_cons = re.sub(r'[a-zA-Z]', '', proj_cons_clean)
     new_lib_cons = re.sub(r'[a-zA-Z]', '', lib_cons_clean)
     new_lib_cons = new_lib_cons.replace('*', '0')
@@ -101,12 +107,6 @@ def is_version_compat(proj_cons, lib_cons):
 
     try:
         return new_proj_cons in SpecifierSet(new_lib_cons)
-    except Exception:
-        pass
-
-    # Tier 2: PEP 440 passthrough (fallback for non-standard versions)
-    try:
-        return proj_cons_clean in SpecifierSet(lib_cons_clean)
     except Exception:
         return False
 
