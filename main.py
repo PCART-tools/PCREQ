@@ -85,7 +85,7 @@ def finalize_and_save_requirements(target_proj_dependency, sub_graph, compatibil
     clean_deps = remove_invalid_versions(target_proj_dependency)
     #print(target_proj_dependency)
     tmp = get_new_lib(clean_deps, python_version)
-    all_packages = set(sub_graph) | set(tmp)
+    all_packages = sorted(set(sub_graph) | set(tmp))
     end_available_versions = {}
     for pkg in all_packages:
         if pkg in clean_deps:

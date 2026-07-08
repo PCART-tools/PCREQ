@@ -536,7 +536,7 @@ def get_sub_graph(graph, node):
     undirected_graph = build_undirected_graph(graph)
     #print(graph)
     visited = reachable_nodes(undirected_graph, node)
-    for i in visited:
+    for i in sorted(visited):
         try:
             sub_graph[i] = graph[i]
         except:

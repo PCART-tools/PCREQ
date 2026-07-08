@@ -544,7 +544,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
     #这里需要修改，目前最多考虑了两次调用例如proj-torchvision-torch。实际上可能有更多多层次调用（proj-A-B-torchvision-torch）。已修改2024-11-27
     s, api_calls_dict, api_file_map, api_paras_map = get_all_used_api(proj_path, target_library_call_module) 
     #print(s)
-    s = list(set(s))
+    s = sorted(set(s))
     api_short_to_full_mapping = {}
     api_full_to_short_mapping = {}
 
