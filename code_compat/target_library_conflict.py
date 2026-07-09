@@ -663,7 +663,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
             #解决sklearn.metrics.regression.mean_squared_error找不到的问题
             flag = 0
             if "." in new_module:
-                init_path = source_root + slash + transform_and_remove_last_segment(new_module) + slash + '__init__.py'
+                init_path = source_root + slash + transform_and_remove_last_segment(module) + slash + '__init__.py'
                 #print(init_path)
                 if os.path.exists(init_path):
                     xxx = paths_of_import_file(init_path)
@@ -688,8 +688,8 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                             flag = 1
                             break
             else:
-                init_path = source_root + slash + '__init__.py'
-                if os.path.exists(source_root + slash + '__init__.py'):
+                init_path = target_library_path + slash + '__init__.py'
+                if os.path.exists(target_library_path + slash + '__init__.py'):
                     xxx = paths_of_import_file(init_path)
                     for xx in xxx:
                         if xx.split(".")[-1] == new_module.split(".")[-1]:
