@@ -527,13 +527,13 @@ def get_FDG_from_requirements(proj_dependency, python_version):
     return res
 
 def reachable_nodes(graph, start_node):
-    visited = set()
+    visited = {}  # dict preserves DFS insertion order (Python 3.7+)
     #start_node = start_node.lower
 
     def dfs(node):
         if node not in visited:
             #print(node)
-            visited.add(node)
+            visited[node] = True
             for neighbor in graph.get(node, []):
                 dfs(neighbor)
 
@@ -558,7 +558,7 @@ def get_sub_graph(graph, node):
     undirected_graph = build_undirected_graph(graph)
     #print(graph)
     visited = reachable_nodes(undirected_graph, node)
-    for i in sorted(visited):
+    for i in visited:
         try:
             sub_graph[i] = graph[i]
         except:

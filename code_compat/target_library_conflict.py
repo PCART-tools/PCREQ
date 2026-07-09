@@ -225,7 +225,7 @@ def get_all_related_py_files(py_file):
     return res
 
 def get_py_files_to_examine(api_to_examine, target_project, target_proj_dependency):
-    py_files_to_examine = set()
+    py_files_to_examine = []
     #print(api_to_examine)
     for api in api_to_examine:
         if api.endswith("__init__") or api.endswith("__default_init__"):
@@ -235,9 +235,11 @@ def get_py_files_to_examine(api_to_examine, target_project, target_proj_dependen
             i = 0
             for j in reversed(tmp):
                 if i == 0:
-                    py_files_to_examine.add(library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py")
+                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py"
                 else:
-                    py_files_to_examine.add(library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py")
+                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py"
+                if _path not in py_files_to_examine:
+                    py_files_to_examine.append(_path)
                 i = i + 1
             #py_files_to_examine.add(tmp)
         else:
@@ -245,20 +247,21 @@ def get_py_files_to_examine(api_to_examine, target_project, target_proj_dependen
             i = 0
             for j in reversed(tmp):
                 if i == 0:
-                    py_files_to_examine.add(library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py")
+                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py"
                 else:
-                    py_files_to_examine.add(library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py")
+                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py"
+                if _path not in py_files_to_examine:
+                    py_files_to_examine.append(_path)
                 i = i + 1
-            
+
     new_py_files_to_examine = py_files_to_examine.copy()
-    new_py_files_to_examine = list(new_py_files_to_examine)
     for py_file in new_py_files_to_examine:
         res = get_all_related_py_files(py_file)
         for r in res:
             if r not in new_py_files_to_examine:
                 new_py_files_to_examine.append(r)
 
-    py_files_to_examine = set(new_py_files_to_examine)
+    py_files_to_examine = list(dict.fromkeys(new_py_files_to_examine))
     return py_files_to_examine
 
 def extract_inner_parentheses(s):
@@ -544,7 +547,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
     #这里需要修改，目前最多考虑了两次调用例如proj-torchvision-torch。实际上可能有更多多层次调用（proj-A-B-torchvision-torch）。已修改2024-11-27
     s, api_calls_dict, api_file_map, api_paras_map = get_all_used_api(proj_path, target_library_call_module) 
     #print(s)
-    s = sorted(set(s))
+    s = list(dict.fromkeys(s))  # deduplicate while preserving insertion order
     api_short_to_full_mapping = {}
     api_full_to_short_mapping = {}
 

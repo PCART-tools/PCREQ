@@ -78,8 +78,8 @@ def solving_constraints(pkg_dict, install_dict):
     reversed_install_dict = {pkg: list(reversed(versions)) for pkg, versions in install_dict.items()}
     solver = add_install_constraints(solver, reversed_install_dict, order_dict, int_dict)
     
-    for pkg in sorted(int_dict.keys()):
-        solver.maximize(int_dict[pkg])
+    for pkg in int_dict.values():
+        solver.maximize(pkg)
 
     try:
         if solver.check():
