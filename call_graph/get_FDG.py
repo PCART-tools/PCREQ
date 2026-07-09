@@ -137,6 +137,9 @@ def remove_incompat_python_version(requires_dist, python_version):
         # platform-specific dependencies (e.g. colorama on Windows,
         # appnope on macOS) are not included on other platforms.
         if "python_version" not in marker_str:
+            if "extra" in marker_str:
+                new_requires_dist.append(item)  # keep unconditionally, handled by filter_extra_markers
+                continue
             try:
                 m = Marker(marker_str)
                 if m.evaluate():
