@@ -248,7 +248,7 @@ def get_packname_and_cons_from_setup(librarypath):
         if type(element) == ast.Call and ((type(element.func) == ast.Name and element.func.id == "setup") or
                                           ((type(element.func) == ast.Attribute and type(element.func.value)==ast.Name and element.func.value.id == "setuptools" and element.func.attr=="setup"))):
             for keyword in element.keywords:
-                if keyword.arg in ["install_requires","setup_requires"]:
+                if keyword.arg == "install_requires":
                     install_requires = keyword.value
                     break
 
