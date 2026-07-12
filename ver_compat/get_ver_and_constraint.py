@@ -3,6 +3,14 @@ from extraction.import_to_path import *
 from utils.util import *
 from packaging.version import parse as parse_version
 
+
+def _is_prerelease(v):
+    """True for rc/dev/alpha/beta; False for final and post releases."""
+    try:
+        return parse_version(v).is_prerelease
+    except Exception:
+        return any(t in str(v).lower() for t in ('rc', 'dev', 'alpha', 'beta'))
+
 library_path_prefix = ""
 constraint_path_prefix = ""
 version_path_prefix = ""
@@ -83,14 +91,20 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
                 ver_entry = _ver_lookup(version_ls, proj_dependency, python_version)
                 if ver_entry is None:
                     raise KeyError(proj_dependency)
+                _all_sat = []
                 for version in ver_entry[python_version]:
                     try:                    #在目标库起始版本的约束中，但是不在目标版本的约束中
                         if is_version_compat(version, target_library_constraint[proj_dependency]):
-                            condidate_version.append(str(parse_version(version)))
+                            _all_sat.append(str(parse_version(version)))
                     except:
                         ver_entry = _ver_lookup(version_ls, proj_dependency, python_version)
                         condidate_version = [str(parse_version(v)) for v in (ver_entry.get(python_version, []) if ver_entry else [])]
                         break
+                else:
+                    # P51: prefer non-pre-release; keep pre-releases only if they are
+                    # the sole versions satisfying the constraint (empty-fallback).
+                    _finals = [v for v in _all_sat if not _is_prerelease(v)]
+                    condidate_version = _finals if _finals else _all_sat
             except:
                 pass
                 continue
@@ -190,7 +204,12 @@ def get_new_lib(target_proj_dependency, python_version):
                 except:
                     continue
                 if flag == False:
-                    tmp = list(reversed(tmp)) 
+                    # P51: prefer non-pre-release; keep pre-releases only if they are
+                    # the sole versions satisfying the constraint (empty-fallback).
+                    _final = [v for v in tmp if not _is_prerelease(v)]
+                    if _final:
+                        tmp = _final
+                    tmp = list(reversed(tmp))
                 new_lib_and_available_version[l] = tmp
     if "keras-nightly" in new_lib_and_available_version.keys():
         new_lib_and_available_version.pop("keras-nightly")
