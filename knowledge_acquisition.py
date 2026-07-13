@@ -1289,7 +1289,30 @@ if __name__ == '__main__':
         # Phase 1: download source and constraint data for each compatible version
         logging.info("Phase 1: downloading %d packages", len(all_packages))
         pkg_total = len(all_packages)
+        # Read library_version.json for per-package cache lookup
+        try:
+            with open(f"{version_path_prefix}library_version.json", 'r') as _lv_f:
+                _version_ls = json.load(_lv_f)
+        except (json.JSONDecodeError, OSError, FileNotFoundError):
+            _version_ls = {}
+        # Read .phase1_done for per-package PyPI skip (same pattern as .phase2_done)
+        _phase1_done_path = f"{version_path_prefix}.phase1_done"
+        try:
+            with open(_phase1_done_path) as _p1_f:
+                _phase1_done = json.load(_p1_f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            _phase1_done = {}
         for pkg_idx, pkg in enumerate(sorted(all_packages)):
+            # Check .phase1_done: if all versions previously downloaded, skip PyPI
+            _pkg_key = norm_pkg(pkg)
+            _cached_versions = _version_ls.get(_pkg_key, {}).get(python_version, [])
+            if _cached_versions and _phase1_done.get(_pkg_key, {}).get(python_version):
+                compatible_versions = _cached_versions
+                n_vers = len(compatible_versions)
+                _write_library_version(pkg, python_version, compatible_versions)
+                logging.info("Phase 1 [%d/%d]: %s (%d versions) — phase1_done cached",
+                             pkg_idx + 1, pkg_total, pkg, n_vers)
+                continue
             compatible_versions = get_compatible_versions(pkg, python_version)
             n_vers = len(compatible_versions)
             _dl_before = _stats["downloaded"]
@@ -1319,6 +1342,19 @@ if __name__ == '__main__':
                              f"{resolve_pkg_dir(pkg, library_path_prefix)}{norm_ver(v)}"
                              "/.no_source")]
             _write_library_version(pkg, python_version, _filtered)
+            # Mark Phase 1 done for this package+pyVer if all filtered
+            # versions have source (guard: only mark complete downloads)
+            _pkg_done = bool(_filtered)
+            if _pkg_done:
+                _norm_pkg_dir = resolve_pkg_dir(pkg, library_path_prefix)
+                for _v in _filtered:
+                    _ver_dir = f"{library_path_prefix}{_norm_pkg_dir}/{_norm_pkg_dir}{norm_ver(_v)}"
+                    if not (os.path.exists(os.path.join(_ver_dir, ".complete"))
+                            or os.path.exists(os.path.join(_ver_dir, ".no_source"))):
+                        _pkg_done = False
+                        break
+            if _pkg_done:
+                _phase1_done.setdefault(_pkg_key, {})[python_version] = True
             _dl_delta = _stats["downloaded"] - _dl_before
             if _dl_delta == 0:
                 logging.info("Phase 1 [%d/%d]: %s (%d versions) — cached",
@@ -1331,6 +1367,10 @@ if __name__ == '__main__':
         logging.info("Phase 1 complete: %d packages | dl:%d fail:%d skip:%d crash:%d | %.0fs",
                      pkg_total, _stats["downloaded"], _stats["failed"],
                      _stats["skipped"], _stats["crashed"], _phase1_elapsed)
+        # Persist .phase1_done (same atomic pattern as .phase2_done)
+        with open(_phase1_done_path + ".tmp", "w") as _p1_tmp:
+            json.dump(_phase1_done, _p1_tmp, sort_keys=True)
+        os.replace(_phase1_done_path + ".tmp", _phase1_done_path)
         _phase_start_time = time.time()
 
         # Phase 2: one-hop dependency discovery from known libraries
@@ -1426,6 +1466,18 @@ if __name__ == '__main__':
                              f"{resolve_pkg_dir(dep, library_path_prefix)}{norm_ver(v)}"
                              "/.no_source")]
             _write_library_version(dep, python_version, _filtered)
+            # Mark Phase 1 done for discovered packages too (cross-project cache)
+            _dep_done = bool(_filtered)
+            if _dep_done:
+                _dep_pkg_dir = resolve_pkg_dir(dep, library_path_prefix)
+                for _v in _filtered:
+                    _ver_dir = f"{library_path_prefix}{_dep_pkg_dir}/{_dep_pkg_dir}{norm_ver(_v)}"
+                    if not (os.path.exists(os.path.join(_ver_dir, ".complete"))
+                            or os.path.exists(os.path.join(_ver_dir, ".no_source"))):
+                        _dep_done = False
+                        break
+            if _dep_done:
+                _phase1_done.setdefault(norm_pkg(dep), {})[python_version] = True
             all_packages.add(dep)
             _dl_delta = _stats["downloaded"] - _dl_before
             if _dl_delta == 0:
@@ -1437,6 +1489,10 @@ if __name__ == '__main__':
 
         logging.info("Phase 2 complete: discovered %d one-hop dependencies | %.0fs",
                      len(discovered), time.time() - _phase_start_time)
+        # Persist .phase1_done again (Phase 2 may have added discovered packages)
+        with open(_phase1_done_path + ".tmp", "w") as _p1_tmp:
+            json.dump(_phase1_done, _p1_tmp, sort_keys=True)
+        os.replace(_phase1_done_path + ".tmp", _phase1_done_path)
 
         # Phase 3: build available_versions and extract APIs
         _phase_start_time = time.time()
