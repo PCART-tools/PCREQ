@@ -681,41 +681,6 @@ def _install_source(target_dir, extract_dir, call_module, is_wheel=True):
     return any(f.endswith('.py') for _, _, files in os.walk(target_dir) for f in files)
 
 
-def _merge_core_namespace(target_dir, call_module):
-    """Merge {call_module}_core/ subpackages into {call_module}/."""
-    init_path = os.path.join(target_dir, call_module, "__init__.py")
-    if not os.path.isfile(init_path):
-        return
-    try:
-        with open(init_path) as f:
-            tree = ast.parse(f.read())
-    except SyntaxError:
-        return
-    core_mod = None
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom):
-            if node.module and node.module.startswith(call_module + "_core"):
-                core_mod = node.module.split(".")[0]
-                break
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name.startswith(call_module + "_core"):
-                    core_mod = alias.name.split(".")[0]
-                    break
-    if core_mod is None:
-        return
-    core_path = os.path.join(target_dir, core_mod)
-    if not os.path.isdir(core_path):
-        return
-    for item in os.listdir(core_path):
-        src = os.path.join(core_path, item)
-        dst = os.path.join(target_dir, call_module, item)
-        if os.path.exists(dst):
-            continue
-        shutil.move(src, dst)
-    shutil.rmtree(core_path)
-
-
 def _keep_dist_info(target_dir, package_name, version):
     """Verify .dist-info/ is preserved for METADATA access."""
     dist_dir = os.path.join(target_dir, f"{norm_pkg(package_name)}-{version}.dist-info")
@@ -1069,7 +1034,6 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                 _mark_no_source(target_dir, "no valid Python module — C extension or similar")
                 _stats["failed"] += 1
             else:
-                _merge_core_namespace(target_dir, call_module)
                 _keep_dist_info(target_dir, package_name, version)
                 # Point 13: mark build as complete
                 if os.path.exists(building_marker):
@@ -1235,9 +1199,18 @@ def extract_fine_grained_knowledge(lib, version):
         merged["api_usage"].extend(api_usage_in_target_library)
         funcs = res["functions"]
         new_funcs = shortenPath(funcs, lib, version, library_path_prefix)
-        merged["functions"].update(new_funcs)
         classes = res["classes"]
         new_classes = shortenPath(classes, lib, version, library_path_prefix)
+        # P45: add public API aliases for _core source modules
+        source_path = resolve_library_source_path(
+            library_path_prefix, lib, version, call_module)
+        source_module_name = os.path.basename(source_path)
+        if source_module_name != call_module:
+            new_funcs = add_public_api_aliases(
+                new_funcs, source_module_name, call_module)
+            new_classes = add_public_api_aliases(
+                new_classes, source_module_name, call_module)
+        merged["functions"].update(new_funcs)
         merged["classes"].update(new_classes)
         merged["methods"].update(res.get("methods", {}))
         merged["global_vars"].extend(res.get("global_vars", []))

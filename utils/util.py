@@ -249,8 +249,8 @@ class FromImport(ast.NodeVisitor):
 
 #通过解析__init__.py,把源码中的部分API路径缩短
 #缩短API路径可能会将不同文件中的API还原成相同的形式，比如A.b.f,A.c.f都还原成A.f
-def shortenPath(api_dict, library, version, library_path_prefix): #lst是传入传出参数，保存修正之后的API路径
-    library_call_module = get_library_call_module(library)
+def shortenPath(api_dict, library, version, library_path_prefix, source_module=None): #lst是传入传出参数，保存修正之后的API路径
+    library_call_module = source_module or get_library_call_module(library)
     norm_lib = resolve_pkg_dir(library, library_path_prefix)
     library_path = f"{library_path_prefix}{norm_lib}/{norm_lib}{version}/{library_call_module}"
     prefix = f"{library_path_prefix}{norm_lib}/{norm_lib}{version}/"
@@ -406,9 +406,49 @@ def update_project_dependencies(target_proj_dependency, res):
     return target_proj_dependency
 
 def get_library_paths(library_path_prefix, target_library, version, call_module):
-    norm_lib = resolve_pkg_dir(target_library, library_path_prefix)
+    return resolve_library_source_path(
+        library_path_prefix, target_library, version, call_module)
+
+
+def resolve_library_source_path(library_path_prefix, lib, version, call_module):
+    """Return actual source root for API extraction.
+
+    If {call_module}_core/ exists under the version root, use it
+    (e.g. tensorflow_core/ for TF 1.15/2.0/2.1). Otherwise fall back
+    to {call_module}/ (old KB, already merged; or non-TF packages).
+    """
+    norm_lib = resolve_pkg_dir(lib, library_path_prefix)
     norm_ver_name = norm_ver(version)
-    return f"{library_path_prefix}{norm_lib}/{norm_lib}{norm_ver_name}/{call_module}"
+    version_root = f"{library_path_prefix}{norm_lib}/{norm_lib}{norm_ver_name}"
+    core_candidate = f"{version_root}/{call_module}_core"
+    if os.path.isdir(core_candidate):
+        return core_candidate
+    return f"{version_root}/{call_module}"
+
+
+def add_public_api_aliases(api_dict, source_module, public_module):
+    """Create public_module.* → source_module.* aliases.
+
+    For every source_module.* key in api_dict, add a corresponding
+    public_module.* alias pointing to the same value. Existing
+    public_module.* keys are not overwritten.
+
+    Example: add_public_api_aliases(funcs, "tensorflow_core", "tensorflow")
+      tensorflow.python.ops.xxx → tensorflow_core.python.ops.xxx
+    """
+    if not source_module or not public_module:
+        return api_dict
+    if source_module == public_module:
+        return api_dict
+    new_dict = api_dict.copy()
+    source_prefix = source_module + "."
+    public_prefix = public_module + "."
+    for api, value in list(api_dict.items()):
+        if api.startswith(source_prefix):
+            alias = public_prefix + api[len(source_prefix):]
+            if alias not in new_dict:
+                new_dict[alias] = value
+    return new_dict
 
 
 def cleanup_temp_files():
