@@ -568,6 +568,58 @@ def _install_source(target_dir, extract_dir, call_module, is_wheel=True):
                     except OSError:
                         pass
                 any_moved = True
+            elif os.path.isdir(src) and not allow_recursive_fallback:
+                # P39: detect nested packages in sdist non-standard layouts
+                # (wheel uses recursive fallback below instead).
+                # Mode A: nested __init__.py (e.g. python/curl/__init__.py)
+                # Mode B: single-file modules (e.g. regex_3/regex.py, no __init__.py)
+                _skip_dirs = {'test', 'tests', 'docs', 'examples'}
+                try:
+                    _contents = os.listdir(src)
+                except OSError:
+                    _contents = []
+                # Separate subdirectories from files
+                _sub_dirs = sorted(
+                    [c for c in _contents if os.path.isdir(os.path.join(src, c))],
+                    reverse=True)
+                _files = [c for c in _contents
+                          if os.path.isfile(os.path.join(src, c))]
+                _nested_found = False
+                # Mode A: nested __init__.py in subdirectories
+                for _sub in _sub_dirs:
+                    if _sub.lower() in _skip_dirs:
+                        continue
+                    _sub_path = os.path.join(src, _sub)
+                    if os.path.isfile(os.path.join(_sub_path, "__init__.py")):
+                        _dst_sub = os.path.join(target_dir, _sub)
+                        if not os.path.exists(_dst_sub):
+                            try:
+                                shutil.move(_sub_path, _dst_sub)
+                                _nested_found = True
+                                any_moved = True
+                            except OSError:
+                                pass
+                # Mode B: single-file module (no __init__.py, .py files directly
+                # in this directory, e.g. regex_3/regex.py)
+                if not _nested_found and not os.path.isfile(
+                        os.path.join(src, "__init__.py")):
+                    _has_module_py = any(
+                        f.endswith('.py') and not f.startswith('_')
+                        for f in _files)
+                    if _has_module_py:
+                        _dst_sub = os.path.join(target_dir, call_module)
+                        os.makedirs(_dst_sub, exist_ok=True)
+                        for _f in _files:
+                            if _f.endswith(('.py', '.so', '.pyd')):
+                                _s_src = os.path.join(src, _f)
+                                _s_dst = os.path.join(_dst_sub, _f)
+                                if not os.path.exists(_s_dst):
+                                    try:
+                                        shutil.move(_s_src, _s_dst)
+                                        any_moved = True
+                                    except OSError:
+                                        pass
+                        _nested_found = True
             elif os.path.isfile(src) and item.endswith(".py") and item != "setup.py":
                 try:
                     shutil.move(src, dst)
