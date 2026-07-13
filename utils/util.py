@@ -306,14 +306,24 @@ def shortenPath(api_dict, library, version, library_path_prefix): #lst是传入�
                 new_api = api.replace(replaceKey2, replaceVal2)
                 if not new_api.startswith(library_call_module):
                     append_str = new_api.replace(replaceKey2, '')
-                    new_api = f"{api_prefix}.{append_str}"
-                    new_api = new_api.replace('..', '.')
+                    if append_str:
+                        new_api = f"{api_prefix}.{append_str}"
+                        new_api = new_api.replace('..', '.')
+                    else:
+                        new_api = None  # P56: skip empty-suffix alias
             elif replaceKey1:
                 new_api = api.replace(replaceKey1, replaceVal1)
                 if not new_api.startswith(library_call_module):
                     append_str = new_api.replace(replaceKey1, '')
-                    new_api = f"{api_prefix}.{append_str}"
-                    new_api = new_api.replace('..', '.')
+                    if append_str:
+                        new_api = f"{api_prefix}.{append_str}"
+                        new_api = new_api.replace('..', '.')
+                    else:
+                        new_api = None  # P56: skip empty-suffix alias
+
+            # P56: normalize path separators in keys
+            if new_api is not None:
+                new_api = new_api.replace('/', '.')
 
             if not isinstance(new_dict[api], str) and new_api is not None:
                 if new_api not in new_dict:
@@ -322,7 +332,15 @@ def shortenPath(api_dict, library, version, library_path_prefix): #lst是传入�
                 if new_api not in new_dict:
                     new_dict[new_api] = new_dict[api]
 
-    return new_dict
+    # P56: normalize path separators in original keys
+    _clean_keys = {k: v for k, v in new_dict.items() if '/' not in k}
+    for k, v in new_dict.items():
+        if '/' in k:
+            _norm = k.replace('/', '.')
+            if _norm not in _clean_keys:
+                _clean_keys[_norm] = v
+
+    return _clean_keys
 
 
 def load_config(config_path):
