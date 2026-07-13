@@ -181,8 +181,10 @@ def get_compatible_versions(package_name, python_version):
             if file_info.get("python_version"):
                 try:
                     if file_info["python_version"] == f"cp{new_python_version}":
-                        compatible_versions.append(version)
-                        break
+                        rp = file_info.get("requires_python")
+                        if rp is None or SpecifierSet(rp).contains(python_version):
+                            compatible_versions.append(version)
+                            break
                     elif file_info["python_version"] != None and f"py{python_version.split('.')[0]}" in file_info["python_version"]:
                         requires_python = file_info.get("requires_python")
                         if requires_python is not None and ("=" in requires_python or ">" in requires_python or "<" in requires_python):
