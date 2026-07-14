@@ -511,9 +511,27 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
     #logging.info(f"**{apis_full_name}******************")
     return apis_full_name, api_to_examine
 
+def _is_stub_json(path):
+    """Return True if JSON file is an empty stub (<200 bytes, no real data)."""
+    try:
+        if os.path.getsize(path) >= 200:
+            return False
+        with open(path) as f:
+            data = json.load(f)
+        return not any(data.get(k) for k in ('functions', 'classes', 'methods'))
+    except Exception:
+        return True
+
+
 def get_all_library_info(library_path, library_call_module, version, lib):
     norm_lib = resolve_pkg_dir(lib, api_path_prefix)
     json_file_path = f"{api_path_prefix}{norm_lib}/{version}.json"
+    # P60: try old naming fallback for rc versions (0.8.0rc4 → 0.8.0.rc4)
+    if not os.path.exists(json_file_path) or _is_stub_json(json_file_path):
+        if 'rc' in version and '.rc' not in version:
+            _alt = f"{api_path_prefix}{norm_lib}/{version.replace('rc', '.rc')}.json"
+            if os.path.exists(_alt) and not _is_stub_json(_alt):
+                json_file_path = _alt
     if not os.path.exists(f"{api_path_prefix}{norm_lib}"):
         os.makedirs(f"{api_path_prefix}{norm_lib}", exist_ok=True)
     if not os.path.exists(json_file_path):

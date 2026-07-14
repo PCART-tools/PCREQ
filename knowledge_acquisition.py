@@ -1245,10 +1245,10 @@ def extract_fine_grained_knowledge(lib, version):
 
 def task(args):
     lib, version = args
-    logging.info("Task start: %s==%s", lib, version)
+    logging.debug("Task start: %s==%s", lib, version)
     try:
         extract_fine_grained_knowledge(lib, version)
-        logging.info("Task done: %s==%s", lib, version)
+        logging.debug("Task done: %s==%s", lib, version)
         return (lib, version, True)
     except Exception:
         logging.exception("Task failed for %s==%s", lib, version)

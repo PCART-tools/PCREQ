@@ -1,4 +1,4 @@
-import os, re, ast, platform, json, logging, shutil
+import os, re, ast, platform, json, logging, shutil, time
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 from packaging import version
@@ -256,6 +256,9 @@ def shortenPath(api_dict, library, version, library_path_prefix, source_module=N
     prefix = f"{library_path_prefix}{norm_lib}/{norm_lib}{version}/"
     new_dict = api_dict.copy()
     init_files = find_init_files(library_path)
+    _t0 = time.time()
+    logging.debug("shortenPath start: %s==%s | %d keys, %d init_files",
+                  library, version, len(api_dict), len(init_files))
 
     # Point 35: cache (init_file, currentLevel) -> importDict to avoid
     # repeated FromImport visits while preserving the original semantics.
@@ -340,6 +343,10 @@ def shortenPath(api_dict, library, version, library_path_prefix, source_module=N
             if _norm not in _clean_keys:
                 _clean_keys[_norm] = v
 
+    _dt = time.time() - _t0
+    if _dt > 1:
+        logging.debug("shortenPath done: %s==%s | %d keys, %d init_files → %.0fs",
+                      library, version, len(api_dict), len(init_files), _dt)
     return _clean_keys
 
 
