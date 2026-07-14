@@ -814,6 +814,11 @@ def _set_worker_knowledge_path(path):
 
 def _init_worker():
     """Configure logging for Pool worker processes."""
+    import faulthandler, signal
+    faulthandler.enable()
+    # Dump stacks on SIGUSR1 for manual inspection
+    signal.signal(signal.SIGUSR1,
+                  lambda *_: faulthandler.dump_traceback())
     if _worker_knowledge_path:
         log_file = os.path.join(_worker_knowledge_path, "knowledge_acquisition.log")
         h = logging.FileHandler(log_file, mode='a')
@@ -1145,10 +1150,15 @@ def _get_all_modules(target_dir, lib):
                 pass
         if not entries:
             entries = [get_library_call_module(lib)]
+        seen = set()
         for e in entries:
-            if os.path.isdir(os.path.join(target_dir, e)) or \
-               os.path.isfile(os.path.join(target_dir, e + ".py")):
-                modules.append(e)
+            root = e.split('/')[0]
+            if root in seen:
+                continue
+            if os.path.isdir(os.path.join(target_dir, root)) or \
+               os.path.isfile(os.path.join(target_dir, root + ".py")):
+                modules.append(root)
+                seen.add(root)
     if not modules:
         modules = [get_library_call_module(lib)]
     return modules
@@ -1235,8 +1245,10 @@ def extract_fine_grained_knowledge(lib, version):
 
 def task(args):
     lib, version = args
+    logging.info("Task start: %s==%s", lib, version)
     try:
         extract_fine_grained_knowledge(lib, version)
+        logging.info("Task done: %s==%s", lib, version)
         return (lib, version, True)
     except Exception:
         logging.exception("Task failed for %s==%s", lib, version)
