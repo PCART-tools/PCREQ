@@ -4,7 +4,7 @@ from extraction.getCall import get_all_used_api
 from extraction.lib_module_and_package_extraction import *
 from extraction.library_api_and_module import *
 from call_graph.get_FDG import *
-import platform, argparse, os, json, time, requests, logging, tempfile, uuid
+import platform, argparse, os, json, time, requests, logging, tempfile, uuid, fcntl
 from packaging.specifiers import SpecifierSet, InvalidSpecifier
 from packaging.version import parse as parse_version
 from packaging.utils import parse_wheel_filename
@@ -1286,6 +1286,24 @@ if __name__ == '__main__':
     # auto-create knowledge directories
     for p in [knowledge_path, library_path_prefix, constraint_path_prefix, api_path_prefix]:
         os.makedirs(p, exist_ok=True)
+
+    # Acquire exclusive lock on the KB to prevent concurrent access
+    _lock_fd = open(f"{knowledge_path}/.ka_lock", "w")
+    _lock_fd.write(str(os.getpid()))
+    _lock_fd.flush()
+    try:
+        fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        try:
+            with open(f"{knowledge_path}/.ka_lock") as _lf:
+                _holder = _lf.read().strip()
+        except Exception:
+            _holder = "unknown"
+        print(f"ERROR: Knowledge base is locked by another process (PID={_holder}).",
+              f"  KB path: {knowledge_path}",
+              f"  Wait for it to finish, or kill it: kill {_holder}",
+              sep="\n", file=sys.stderr)
+        sys.exit(1)
 
     # logging: INFO+ to file, WARNING+ to console
     log_file = os.path.join(knowledge_path, "knowledge_acquisition.log")
