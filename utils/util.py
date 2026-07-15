@@ -458,6 +458,39 @@ def add_public_api_aliases(api_dict, source_module, public_module):
     return new_dict
 
 
+def rename_core_keys(obj, call_module):
+    """Rename {call_module}.* keys to their public names.
+
+    TensorFlow 1.15/2.0/2.1 ship a stub tensorflow/ and real source in
+    tensorflow_core/.  Extracted API keys get the _core prefix, but the
+    __init__.py imports inside tensorflow_core/ reference the public name
+    (tensorflow.*).  Renaming keys before shortenPath lets those imports
+    match; renaming afterwards fixes alias keys that shortenPath derives
+    from directory paths.
+
+    Accepts a dict (renames keys) or a single string key.
+    """
+    if not call_module.endswith('_core'):
+        return obj
+    public = call_module[:-5]
+    core_prefix = call_module + '.'
+    if isinstance(obj, str):
+        if obj == call_module:
+            return public
+        if obj.startswith(core_prefix):
+            return public + '.' + obj[len(core_prefix):]
+        return obj
+    new_dict = {}
+    for k, v in obj.items():
+        if k == call_module:
+            new_dict[public] = v
+        elif k.startswith(core_prefix):
+            new_dict[public + '.' + k[len(core_prefix):]] = v
+        else:
+            new_dict[k] = v
+    return new_dict
+
+
 def cleanup_temp_files():
     tmp_json = "./extraction/tmp.json"
     if os.path.exists(tmp_json):

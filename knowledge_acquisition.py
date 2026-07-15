@@ -1184,12 +1184,13 @@ def extract_fine_grained_knowledge(lib, version):
                         tree = ast.parse(f.read())
                 except Exception:
                     continue
-                merged["modules"].append(call_module)
+                call_module_renamed = rename_core_keys(call_module, call_module)
+                merged["modules"].append(call_module_renamed)
                 for node in ast.walk(tree):
                     if isinstance(node, ast.FunctionDef):
-                        merged["functions"][f"{call_module}.{node.name}"] = {}
+                        merged["functions"][f"{call_module_renamed}.{node.name}"] = {}
                     elif isinstance(node, ast.ClassDef):
-                        merged["classes"][f"{call_module}.{node.name}"] = {}
+                        merged["classes"][f"{call_module_renamed}.{node.name}"] = {}
                 continue
             # Flat package: files directly in target_dir (e.g. imageio 0.2.3)
             if os.path.isfile(f"{target_dir}/__init__.py"):
@@ -1201,6 +1202,8 @@ def extract_fine_grained_knowledge(lib, version):
         dir_mods = get_python_modules_and_packages_from_dir(library_path, call_module)
         init_mods = get_python_modules_and_packages_from_init(library_path, call_module)
         dir_mods.update(init_mods)
+        if call_module.endswith('_core'):
+            dir_mods = {rename_core_keys(k, call_module) for k in dir_mods}
         merged["modules"].extend(dir_mods)
         try:
             api_usage_in_target_library, _, __, ___ = get_all_used_api(library_path, call_module)
@@ -1208,22 +1211,29 @@ def extract_fine_grained_knowledge(lib, version):
             api_usage_in_target_library = []
         merged["api_usage"].extend(api_usage_in_target_library)
         funcs = res["functions"]
-        new_funcs = shortenPath(funcs, lib, version, library_path_prefix)
         classes = res["classes"]
-        new_classes = shortenPath(classes, lib, version, library_path_prefix)
-        # P45: add public API aliases for _core source modules
-        source_path = resolve_library_source_path(
-            library_path_prefix, lib, version, call_module)
-        source_module_name = os.path.basename(source_path)
-        if source_module_name != call_module:
-            new_funcs = add_public_api_aliases(
-                new_funcs, source_module_name, call_module)
-            new_classes = add_public_api_aliases(
-                new_classes, source_module_name, call_module)
+        # Rename _core.* keys to public.* before shortenPath so that
+        # __init__.py imports (which use the public module name) can
+        # match the extracted API keys.  This is equivalent to what
+        # _merge_core_namespace used to do at the filesystem level.
+        if call_module.endswith('_core'):
+            funcs = rename_core_keys(funcs, call_module)
+            classes = rename_core_keys(classes, call_module)
+        new_funcs = shortenPath(funcs, lib, version, library_path_prefix, source_module=call_module)
+        new_classes = shortenPath(classes, lib, version, library_path_prefix, source_module=call_module)
+        # shortenPath generates alias keys with a _core.* prefix
+        # (derived from api_prefix on the source directory path).
+        # Rename those to public.* as well.
+        if call_module.endswith('_core'):
+            new_funcs = rename_core_keys(new_funcs, call_module)
+            new_classes = rename_core_keys(new_classes, call_module)
         merged["functions"].update(new_funcs)
         merged["classes"].update(new_classes)
         merged["methods"].update(res.get("methods", {}))
-        merged["global_vars"].extend(res.get("global_vars", []))
+        gvars = res.get("global_vars", [])
+        if call_module.endswith('_core'):
+            gvars = [rename_core_keys(g, call_module) for g in gvars]
+        merged["global_vars"].extend(gvars)
 
     if not merged["modules"] and not merged["functions"] and not merged["classes"]:
         return
