@@ -34,7 +34,7 @@ def add_dependency_constraints(solver, pkg_dict, order_dict, int_dict):
     for pkg, ver_dict in pkg_dict.items():
         constraints = []
         for ver, deps in ver_dict.items():
-            if ver == 'False':
+            if ver == 'False' or deps == 'False':
                 constraints.append(And(False))
                 continue
 

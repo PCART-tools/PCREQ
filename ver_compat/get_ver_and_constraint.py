@@ -150,6 +150,7 @@ def get_compatibility_dict(available_versions, python_version):
                 #print(library)
                 res[version] = a
             else:
+                has_constraint = False     # P66: track if we attempted to match a constraint
                 for l in constraint:
                     #print(f"{library}-{version}, {l}, {constraint[l]}")
                     if l in available_versions.keys() and python_version in version_ls.get(l, {}):
@@ -158,14 +159,21 @@ def get_compatibility_dict(available_versions, python_version):
                         av_vers = set(available_versions[l])
                         all_vers = av_vers | vls_vers
                         if constraint[l] is not None and constraint[l] != "none":
+                            has_constraint = True
                             for v in all_vers:
                                 if is_version_compat(v, constraint[l]):
                                     a.append(l+'#'+str(parse_version(v)))
                         else:
                             for v in all_vers:
                                 a.append(l+'#'+str(parse_version(v)))
-                                    
-                res[version] = a
+
+                # P66: if we checked at least one specific constraint and
+                # no version satisfied it → the version is unsatisfiable.
+                # Mark as 'False' to trigger And(False) in Z3 encoding.
+                if has_constraint and not a:
+                    res[version] = 'False'
+                else:
+                    res[version] = a
             
             #print(res)
             compatibility_dict[library] = res

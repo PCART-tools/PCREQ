@@ -150,6 +150,19 @@ def _is_runtime_compat_wheel(filename, compat_tags):
     return any(t in compat_tags for t in tags)
 
 
+def _py_version_is_compatible(python_version, requires_python):
+    """Check if any version in the python_version range satisfies requires_python."""
+    if not requires_python:
+        return True
+    rp_spec = SpecifierSet(requires_python)
+    if python_version.count('.') == 1:
+        major, minor = python_version.split('.')
+        candidates = [f"{major}.{minor}.1", f"{major}.{minor}.99"]
+        return any(rp_spec.contains(c) for c in candidates)
+    else:
+        return rp_spec.contains(python_version)
+
+
 def get_compatible_versions(package_name, python_version):
     url = f"https://pypi.org/pypi/{package_name}/json"
     try:
@@ -182,13 +195,13 @@ def get_compatible_versions(package_name, python_version):
                 try:
                     if file_info["python_version"] == f"cp{new_python_version}":
                         rp = file_info.get("requires_python")
-                        if rp is None or SpecifierSet(rp).contains(python_version):
+                        if rp is None or _py_version_is_compatible(python_version, rp):
                             compatible_versions.append(version)
                             break
                     elif file_info["python_version"] != None and f"py{python_version.split('.')[0]}" in file_info["python_version"]:
                         requires_python = file_info.get("requires_python")
                         if requires_python is not None and ("=" in requires_python or ">" in requires_python or "<" in requires_python):
-                            if SpecifierSet(requires_python).contains(python_version):
+                            if _py_version_is_compatible(python_version, requires_python):
                                 compatible_versions.append(version)
                                 break
                         else:
@@ -197,7 +210,7 @@ def get_compatible_versions(package_name, python_version):
                     elif file_info.get("requires_python") == None:
                         compatible_versions.append(version)
                         break
-                    elif SpecifierSet(file_info["requires_python"]).contains(python_version):
+                    elif _py_version_is_compatible(python_version, file_info["requires_python"]):
                         compatible_versions.append(version)
                         break
                 except (KeyError, TypeError, InvalidSpecifier):
