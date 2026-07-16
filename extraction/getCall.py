@@ -301,7 +301,7 @@ def get_last_part_after_first_parenthesis(s):
     return parts[-1] if len(parts) > 1 else parts[0]  # 如果有 '('，返回分割后的最后一部分，否则返回原字符串
 
 def _extract_api_data(data_dir):
-    all_apis = set()
+    all_apis = []
     new_CallDict = {}
     api_file_map = {}
     api_paras_map = {}
@@ -310,15 +310,16 @@ def _extract_api_data(data_dir):
         CallDict = getCallFunction_wo_libname(filename)
         values = CallDict.values()
         for value in values:
-            all_apis.add(value.split('(')[0])
-            api_paras_map[value.split('(')[0]] = "("+get_last_part_after_first_parenthesis(value)
+            api_name = value.split('(')[0]
+            all_apis.append(api_name)
+            api_paras_map[api_name] = "("+get_last_part_after_first_parenthesis(value)
         for key in CallDict:
             new_value = key.split('(')[0]
             new_key = CallDict[key].split('(')[0]
             new_CallDict[new_key] = new_value
             api_file_map[new_value] = filename
     return {
-        "all_apis": list(all_apis),
+        "all_apis": list(dict.fromkeys(all_apis)),
         "new_CallDict": new_CallDict,
         "api_file_map": api_file_map,
         "api_paras_map": api_paras_map,
@@ -346,10 +347,11 @@ def get_all_used_api(data_dir, package_name):
             json.dump(result, f)
         os.replace(tmp_file, cache_file)
 
-    all_apis = set()
+    all_apis = []
     for i in result["all_apis"]:
         if i.startswith(package_name):
-            all_apis.add(i)
+            all_apis.append(i)
+    all_apis = list(dict.fromkeys(all_apis))
 
     new_CallDict = {}
     for key in result["new_CallDict"]:

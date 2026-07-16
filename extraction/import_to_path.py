@@ -7,7 +7,7 @@ def extract_imports_from_file(file_path):
         with open(file_path, 'r') as file:
             node = ast.parse(file.read(), filename=file_path)
     except:
-        return set()
+        return []
     imports = []
     for n in ast.walk(node):
         if isinstance(n, ast.Import):
@@ -19,10 +19,9 @@ def extract_imports_from_file(file_path):
                 for alias in n.names:
                     imports.append(f"{n.module}.{alias.name}")
             else:
-                # 处理相对导入的情况
                 for alias in n.names:
                     imports.append(alias.name)
-    return set(imports)
+    return list(dict.fromkeys(imports))
 
 def infer_directory_structure(imports):
     """根据导入信息推断目录结构。"""
@@ -53,8 +52,7 @@ def paths_of_import_file(file_path):
     imports = extract_imports_from_file(file_path)
     structure = infer_directory_structure(imports)
     directory_paths = print_directory_structure(structure)
-    directory_paths_set = set(directory_paths)
-    return directory_paths_set
+    return list(dict.fromkeys(directory_paths))
 
 def get_path_by_extension(root_dir, flag='.py'):
     paths = []
@@ -69,11 +67,12 @@ def get_path_by_extension(root_dir, flag='.py'):
 
 def get_paths_of_import(root_dir):
     paths = get_path_by_extension(root_dir)
-    directory_paths_set = set()
+    directory_paths = []
     for file_path in paths:
         a = paths_of_import_file(file_path)
-        #print(a)
-        directory_paths_set.update(a)
-    return directory_paths_set
+        for item in a:
+            if item not in directory_paths:
+                directory_paths.append(item)
+    return directory_paths
 
 
