@@ -3,7 +3,7 @@ from extraction.lib_module_and_package_extraction import get_python_modules_and_
 from extraction.getCall import get_all_used_api
 from call_graph.engine import main as cfmain
 from .library_version_change import get_version_change
-from utils.util import extract_function_defs_from_file, extract_classes_from_file, get_library_call_module, shortenPath, resolve_pkg_dir, rename_core_keys
+from utils.util import extract_function_defs_from_file, extract_classes_from_file, get_library_call_module, shortenPath, resolve_pkg_dir, rename_core_keys, detect_call_modules
 from extraction.library_api_and_module import extract_from_directory
 from extraction.get_attribute_from_proj import get_attributes_from_file
 from call_graph.get_FDG import get_FDG_from_requirements
@@ -535,23 +535,32 @@ def get_all_library_info(library_path, library_call_module, version, lib):
     if not os.path.exists(f"{api_path_prefix}{norm_lib}"):
         os.makedirs(f"{api_path_prefix}{norm_lib}", exist_ok=True)
     if not os.path.exists(json_file_path):
-        res = extract_from_directory(library_path)
-        dir = get_python_modules_and_packages_from_dir(library_path, library_call_module)
-        init_dir = get_python_modules_and_packages_from_init(library_path, library_call_module)
+        # P64: if library_path does not exist, auto-detect call_module
+        _extract_path = library_path
+        _actual_call_module = library_call_module
+        if not os.path.exists(_extract_path):
+            _version_root = _extract_path.rsplit('/', 1)[0]
+            _detected = detect_call_modules(_version_root)
+            if _detected:
+                _extract_path = os.path.join(_version_root, _detected[0])
+                _actual_call_module = _detected[0]
+        res = extract_from_directory(_extract_path)
+        dir = get_python_modules_and_packages_from_dir(_extract_path, _actual_call_module)
+        init_dir = get_python_modules_and_packages_from_init(_extract_path, _actual_call_module)
         dir.update(init_dir)
         res["modules"] = list(dir)
-        api_usage_in_target_library, _1, __2, _3  = get_all_used_api(library_path, library_call_module)
+        api_usage_in_target_library, _1, __2, _3  = get_all_used_api(_extract_path, _actual_call_module)
         res["api_usage"] = list(api_usage_in_target_library)
         funcs = res["functions"]
         classes = res["classes"]
-        if library_call_module.endswith('_core'):
-            funcs = rename_core_keys(funcs, library_call_module)
-            classes = rename_core_keys(classes, library_call_module)
-        new_funcs = shortenPath(funcs, lib, version, library_path_prefix, source_module=library_call_module)
-        new_classes = shortenPath(classes, lib, version, library_path_prefix, source_module=library_call_module)
-        if library_call_module.endswith('_core'):
-            new_funcs = rename_core_keys(new_funcs, library_call_module)
-            new_classes = rename_core_keys(new_classes, library_call_module)
+        if _actual_call_module.endswith('_core'):
+            funcs = rename_core_keys(funcs, _actual_call_module)
+            classes = rename_core_keys(classes, _actual_call_module)
+        new_funcs = shortenPath(funcs, lib, version, library_path_prefix, source_module=_actual_call_module)
+        new_classes = shortenPath(classes, lib, version, library_path_prefix, source_module=_actual_call_module)
+        if _actual_call_module.endswith('_core'):
+            new_funcs = rename_core_keys(new_funcs, _actual_call_module)
+            new_classes = rename_core_keys(new_classes, _actual_call_module)
         res["functions"] = new_funcs
         res["classes"] = new_classes
         _write_json(json_file_path, res)

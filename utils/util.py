@@ -187,6 +187,78 @@ def get_library_call_module(library):
         }
         return module_map.get(library, library)
 
+
+def detect_call_modules(target_dir):
+    """Return all importable module names found in *target_dir*.
+
+    Fallback order:
+      1. .dist-info/top_level.txt
+      2. .egg-info/top_level.txt
+      3. directories with __init__.py
+      4. root .py files (single-file modules)
+    Returns an empty list when *target_dir* does not exist or contains no modules.
+    """
+    if not os.path.isdir(target_dir):
+        return []
+
+    # Tier 1 & 2: top_level.txt from .dist-info or .egg-info
+    for suffix in (".dist-info", ".egg-info"):
+        for d in sorted(os.listdir(target_dir)):
+            if d.endswith(suffix):
+                tl_path = os.path.join(target_dir, d, "top_level.txt")
+                if os.path.isfile(tl_path):
+                    try:
+                        with open(tl_path) as f:
+                            entries = [l.strip() for l in f if l.strip()]
+                    except OSError:
+                        pass
+                    else:
+                        if entries:
+                            seen = set()
+                            result = []
+                            for e in entries:
+                                root = e.split('/')[0]
+                                if root not in seen:
+                                    seen.add(root)
+                                    result.append(root)
+                            return result
+                break
+
+    # Tier 3: directories with __init__.py, and namespace packages
+    # (dirs without __init__.py that contain subdirs with __init__.py,
+    # e.g. google/ containing google/protobuf/__init__.py).
+    modules = []
+    seen = set()
+    for d in sorted(os.listdir(target_dir)):
+        if d.startswith(".") or d.endswith((".dist-info", ".egg-info", ".data")):
+            continue
+        dp = os.path.join(target_dir, d)
+        if not os.path.isdir(dp):
+            continue
+        if os.path.isfile(os.path.join(dp, "__init__.py")):
+            if d not in seen:
+                modules.append(d)
+                seen.add(d)
+        else:
+            # Check for namespace package: subdirs with __init__.py
+            for sub in os.listdir(dp):
+                subp = os.path.join(dp, sub)
+                if os.path.isdir(subp) and os.path.isfile(os.path.join(subp, "__init__.py")):
+                    if d not in seen:
+                        modules.append(d)
+                        seen.add(d)
+                    break
+
+    # Tier 4: root .py files (single-file modules)
+    if not modules:
+        for f in sorted(os.listdir(target_dir)):
+            if f.startswith("."):
+                continue
+            fp = os.path.join(target_dir, f)
+            if os.path.isfile(fp) and f.endswith(".py") and f != "setup.py":
+                modules.append(f[:-3])
+    return modules
+
 def transform_and_remove_last_segment(input_str):
     # 将点号替换为斜杠
     transformed_str = input_str.replace('.', '/')

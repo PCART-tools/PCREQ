@@ -727,15 +727,39 @@ _CALL_MODULE_MAP = {
 }
 
 
+def _py_file_count(entry, target_dir):
+    """Count .py files under *entry* if it is a directory; 0 otherwise."""
+    epath = os.path.join(target_dir, entry)
+    if os.path.isdir(epath):
+        return sum(1 for _, _, fs in os.walk(epath)
+                   for f in fs if f.endswith(".py"))
+    return 0
+
+
+def _select_best_module_name(entries, target_dir, package_name):
+    """Pick best module name from *entries*: prefer pkg name match, then most .py files."""
+    if not entries:
+        return None
+    if len(entries) == 1:
+        return entries[0]
+    norm_pkg = package_name.replace("-", "_")
+    matching = [e for e in entries if e.replace("-", "_") == norm_pkg]
+    if matching:
+        return matching[0]
+    return max(entries, key=lambda e: _py_file_count(e, target_dir))
+
+
 def _read_top_level_txt(target_dir, package_name):
-    """Read top_level.txt from .dist-info/ (PEP 427) to get module name.
+    """Read top_level.txt from .dist-info/ or .egg-info/ to get module name.
 
     Multi-entry: prefers package name match, then most .py files.
     Returns module name or None.
     """
     if not os.path.isdir(target_dir):
         return None
-    for d in os.listdir(target_dir):
+
+    # Prefer .dist-info (PEP 427)
+    for d in sorted(os.listdir(target_dir)):
         if d.endswith(".dist-info"):
             tl_path = os.path.join(target_dir, d, "top_level.txt")
             if not os.path.isfile(tl_path):
@@ -745,20 +769,24 @@ def _read_top_level_txt(target_dir, package_name):
                     entries = [l.strip() for l in f if l.strip()]
             except OSError:
                 continue
-            if not entries:
+            sel = _select_best_module_name(entries, target_dir, package_name)
+            if sel:
+                return sel
+
+    # Fallback to .egg-info (sdist builds)
+    for d in sorted(os.listdir(target_dir)):
+        if d.endswith(".egg-info"):
+            tl_path = os.path.join(target_dir, d, "top_level.txt")
+            if not os.path.isfile(tl_path):
                 continue
-            if len(entries) == 1:
-                return entries[0]
-            norm_pkg = package_name.replace("-", "_")
-            matching = [e for e in entries if e.replace("-", "_") == norm_pkg]
-            if matching:
-                return matching[0]
-            def _py_count(e):
-                epath = os.path.join(target_dir, e)
-                if os.path.isdir(epath):
-                    return sum(1 for _, _, fs in os.walk(epath) for f in fs if f.endswith(".py"))
-                return 0
-            return max(entries, key=_py_count)
+            try:
+                with open(tl_path) as f:
+                    entries = [l.strip() for l in f if l.strip()]
+            except OSError:
+                continue
+            sel = _select_best_module_name(entries, target_dir, package_name)
+            if sel:
+                return sel
     return None
 
 
@@ -1143,35 +1171,12 @@ def _write_library_version(pkg, python_version, compatible_versions):
 # ---------------------------------------------------------------------------
 
 def _get_all_modules(target_dir, lib):
-    """Return all valid module names from top_level.txt, or auto-detect.
+    """Return all valid module names via :func:`detect_call_modules`.
 
-    Returns a list of module names that actually exist in target_dir.
+    Falls back to ``get_library_call_module(lib)`` when no modules are
+    found (non-existent directory, empty source tree, etc.).
     """
-    modules = []
-    if os.path.isdir(target_dir):
-        tl_path = None
-        for d in os.listdir(target_dir):
-            if d.endswith(".dist-info"):
-                tl_path = os.path.join(target_dir, d, "top_level.txt")
-                break
-        entries = []
-        if tl_path and os.path.isfile(tl_path):
-            try:
-                with open(tl_path) as f:
-                    entries = [l.strip() for l in f if l.strip()]
-            except OSError:
-                pass
-        if not entries:
-            entries = [get_library_call_module(lib)]
-        seen = set()
-        for e in entries:
-            root = e.split('/')[0]
-            if root in seen:
-                continue
-            if os.path.isdir(os.path.join(target_dir, root)) or \
-               os.path.isfile(os.path.join(target_dir, root + ".py")):
-                modules.append(root)
-                seen.add(root)
+    modules = detect_call_modules(target_dir)
     if not modules:
         modules = [get_library_call_module(lib)]
     return modules
@@ -1259,9 +1264,10 @@ def extract_fine_grained_knowledge(lib, version):
     os.replace(tmp_path, out_path)
 
     # Write .complete sidecar when call module source is trusted
-    # (from top_level.txt or a known hand-coded mapping).
-    if _read_top_level_txt(target_dir, lib) is not None or \
-       lib in _CALL_MODULE_MAP:
+    # (from top_level.txt, known mapping, or auto-detection).
+    if (_read_top_level_txt(target_dir, lib) is not None
+            or lib in _CALL_MODULE_MAP
+            or detect_call_modules(target_dir)):
         with open(out_path + ".complete", "w") as _:
             pass
 
