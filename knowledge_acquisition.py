@@ -1,5 +1,5 @@
 from utils.util import *
-from utils.kb_report import generate as kb_report_generate
+from utils.kb_report import generate as kb_report_generate, append_status as kb_append_status
 from extraction.getCall import get_all_used_api
 from extraction.lib_module_and_package_extraction import *
 from extraction.library_api_and_module import *
@@ -677,7 +677,7 @@ def _install_source(target_dir, extract_dir, call_module, is_wheel=True):
             moved = _move_items(extract_dir, allow_recursive_fallback=True)
         whitelist = whitelist_orig
 
-    # Move .dist-info, .egg-info, .data metadata
+    # Move .dist-info, .egg-info, .data metadata directories
     for item in sorted(os.listdir(extract_dir)):
         if item.startswith("."):
             continue
@@ -690,8 +690,29 @@ def _install_source(target_dir, extract_dir, call_module, is_wheel=True):
                 shutil.move(src, dst)
             except (shutil.Error, OSError):
                 pass
+    # Move loose metadata files left after _extract_archive flattened
+    # a single .dist-info directory (e.g. metadata-only wheels)
+    _METADATA_FILES = ('METADATA', 'PKG-INFO', 'top_level.txt',
+                       'RECORD', 'WHEEL', 'INSTALLER', 'entry_points.txt')
+    _loose_metadata = [item for item in sorted(os.listdir(extract_dir))
+                       if item in _METADATA_FILES]
+    if _loose_metadata:
+        # _extract_archive flattened a single .dist-info directory.
+        # Re-wrap files into a .dist-info so get_library_constraint_from_metadata
+        # can find Requires-Dist constraints.
+        _dist_dir = os.path.join(target_dir, f"{call_module}.dist-info")
+        os.makedirs(_dist_dir, exist_ok=True)
+        for item in _loose_metadata:
+            src = os.path.join(extract_dir, item)
+            dst = os.path.join(_dist_dir, item)
+            if not os.path.exists(dst):
+                try:
+                    shutil.move(src, dst)
+                except (shutil.Error, OSError):
+                    pass
 
-    return any(f.endswith('.py') for _, _, files in os.walk(target_dir) for f in files)
+    return any(f.endswith('.py') for _, _, files in os.walk(target_dir) for f in files) \
+           or _has_metadata(target_dir)
 
 
 def _keep_dist_info(target_dir, package_name, version):
@@ -881,6 +902,30 @@ def _mark_no_source(target_dir, reason=""):
             f.write(reason + "\n")
 
 
+def _has_metadata(directory):
+    """Return True if *directory* contains .dist-info or .egg-info metadata.
+
+    Handles two cases:
+      - Normal: ``.dist-info/`` or ``.egg-info/`` directory exists
+      - Flattened: _extract_archive flattened a single .dist-info directory,
+        leaving METADATA / top_level.txt loose in *directory*
+    """
+    try:
+        entries = os.listdir(directory)
+    except OSError:
+        return False
+    # Case 1: metadata directory present
+    if any(d.endswith(('.dist-info', '.egg-info'))
+           for d in entries
+           if os.path.isdir(os.path.join(directory, d))):
+        return True
+    # Case 2: flattened metadata (METADATA / PKG-INFO files after
+    # _extract_archive flattened a single .dist-info directory)
+    if any(f in ('METADATA', 'PKG-INFO') for f in entries):
+        return True
+    return False
+
+
 def _check_source(td, cm):
     """Check if a Python module is already extracted in *td* under *cm* or its variants.
 
@@ -999,7 +1044,8 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                 tmp_archive = os.path.join(tmpdir, fname)
                 shutil.copy2(existing, tmp_archive)
                 _extract_archive(tmp_archive, extract_dir)
-                if any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files):
+                if any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files) \
+                   or _has_metadata(extract_dir):
                     artifact_path = existing
                     artifact_is_wheel = _is_wheel
                     _stats["skipped"] += 1
@@ -1044,7 +1090,8 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             tmp_archive = os.path.join(tmpdir, fname)
             shutil.copy2(saved, tmp_archive)
             _extract_archive(tmp_archive, extract_dir)
-            if any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files):
+            if any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files) \
+               or _has_metadata(extract_dir):
                 artifact_path = saved
                 artifact_is_wheel = _is_wheel
                 break
@@ -1071,7 +1118,8 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             _has_valid_module = (
                 os.path.isdir(os.path.join(target_dir, call_module)) or
                 os.path.isfile(os.path.join(target_dir, call_module + ".py")) or
-                os.path.isfile(os.path.join(target_dir, "__init__.py"))  # flat package
+                os.path.isfile(os.path.join(target_dir, "__init__.py")) or  # flat package
+                _has_metadata(target_dir)  # metadata-only compiled extension
             )
             if not _has_valid_module:
                 # No valid Python module extracted (C extension or similar)
@@ -1098,7 +1146,7 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                                     os.path.join(_root, _f))
                             except OSError:
                                 pass
-                if _py_total == 0:
+                if _py_total == 0 and not _has_metadata(target_dir):
                     # Remove large .whl/.tar.gz archives
                     for _f in os.listdir(target_dir):
                         if _f.endswith(('.whl', '.tar.gz', '.zip',
@@ -1336,7 +1384,7 @@ if __name__ == '__main__':
 
     # logging: INFO+ to file, WARNING+ to console
     log_file = os.path.join(knowledge_path, "knowledge_acquisition.log")
-    fh = logging.FileHandler(log_file, mode='a')
+    fh = logging.FileHandler(log_file, mode='w')
     fh.setLevel(logging.INFO)
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     ch = logging.StreamHandler()
@@ -1698,9 +1746,21 @@ if __name__ == '__main__':
         logging.info("=" * 70)
     except BaseException:
         try:
+            _elapsed = time.time() - _phase_start_time
+            kb_append_status(knowledge_path, {
+                "config": f"{target_project}/{target_library}/{target_version}",
+                "status": "failed",
+                "elapsed": round(_elapsed, 1),
+            })
             kb_report_generate(knowledge_path)
         except Exception:
             logging.exception("Failed to generate KB report")
         raise
     else:
+        _elapsed = time.time() - _phase_start_time
+        kb_append_status(knowledge_path, {
+            "config": f"{target_project}/{target_library}/{target_version}",
+            "status": "ok" if not _stats.get("crashed", 0) else "failed",
+            "elapsed": round(_elapsed, 1),
+        })
         kb_report_generate(knowledge_path)
