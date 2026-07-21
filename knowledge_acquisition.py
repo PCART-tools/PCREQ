@@ -1490,12 +1490,9 @@ if __name__ == '__main__':
             if _pkg_done:
                 _phase1_done.setdefault(_pkg_key, {})[python_version] = True
             _dl_delta = _stats["downloaded"] - _dl_before
-            if _dl_delta == 0:
-                logging.info("Phase 1 [%d/%d]: %s (%d versions) — cached",
-                             pkg_idx + 1, pkg_total, pkg, n_vers)
-            elif n_vers < 40:
-                logging.info("Phase 1 [%d/%d]: %s (%d versions) — %d dl",
-                             pkg_idx + 1, pkg_total, pkg, n_vers, _dl_delta)
+            _cached = n_vers - _dl_delta
+            logging.info("Phase 1 [%d/%d]: %s (%d versions) — %d dl, %d cached",
+                         pkg_idx + 1, pkg_total, pkg, n_vers, _dl_delta, _cached)
 
         _phase1_elapsed = time.time() - _phase_start_time
         logging.info("Phase 1 complete: %d packages | dl:%d fail:%d skip:%d crash:%d | %.0fs",
@@ -1614,12 +1611,9 @@ if __name__ == '__main__':
                 _phase1_done.setdefault(norm_pkg(dep), {})[python_version] = True
             all_packages.add(dep)
             _dl_delta = _stats["downloaded"] - _dl_before
-            if _dl_delta == 0:
-                logging.info("Phase 2 [%d/%d]: %s (%d versions) — cached",
-                             _disc_idx + 1, _disc_total, dep, n_dep_vers)
-            else:
-                logging.info("Phase 2 [%d/%d]: %s (%d versions) — %d dl",
-                             _disc_idx + 1, _disc_total, dep, n_dep_vers, _dl_delta)
+            _cached = n_dep_vers - _dl_delta
+            logging.info("Phase 2 [%d/%d]: %s (%d versions) — %d dl, %d cached",
+                         _disc_idx + 1, _disc_total, dep, n_dep_vers, _dl_delta, _cached)
 
         logging.info("Phase 2 complete: discovered %d one-hop dependencies | %.0fs",
                      len(discovered), time.time() - _phase_start_time)
