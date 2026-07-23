@@ -188,7 +188,54 @@ def get_library_call_module(library):
         return module_map.get(library, library)
 
 
-def detect_call_modules(target_dir):
+def _dedup_roots(entries):
+    """Extract first path component from *entries* and return unique roots."""
+    result = []
+    seen = set()
+    for e in entries:
+        root = e.split('/')[0]
+        if root not in seen:
+            seen.add(root)
+            result.append(root)
+    return result
+
+
+def _merge_roots(all_entries):
+    """Merge root entries from multiple .dist-info/.egg-info directories."""
+    result = []
+    seen = set()
+    for _d, entries in all_entries:
+        for e in entries:
+            root = e.split('/')[0]
+            if root not in seen:
+                seen.add(root)
+                result.append(root)
+    return result
+
+
+def _match_package_name(all_entries, suffix, package_name):
+    """Select the .dist-info/.egg-info entry matching *package_name*.
+
+    Strategy A: .dist-info directory name (minus version) matches package name.
+    Strategy B: top_level.txt contains an entry matching package name.
+    Returns the deduped root list on match, or None.
+    """
+    norm_pkg = package_name.replace("-", "_")
+    # Strategy A: match by .dist-info directory name
+    for d, entries in all_entries:
+        d_name = d[:-(len(suffix) + 1)]        # strip ".dist-info" / ".egg-info"
+        d_pkg = d_name.rsplit("-", 1)[0]        # strip version suffix
+        if d_pkg.replace("-", "_") == norm_pkg:
+            return _dedup_roots(entries)
+    # Strategy B: match by top_level.txt entry
+    for d, entries in all_entries:
+        for e in entries:
+            if e.split('/')[0].replace("-", "_") == norm_pkg:
+                return _dedup_roots(entries)
+    return None
+
+
+def detect_call_modules(target_dir, package_name=None):
     """Return all importable module names found in *target_dir*.
 
     Fallback order:
@@ -196,6 +243,10 @@ def detect_call_modules(target_dir):
       2. .egg-info/top_level.txt
       3. directories with __init__.py
       4. root .py files (single-file modules)
+
+    When *package_name* is provided and multiple .dist-info/.egg-info
+    directories are present (old KB ``pip install --target`` pollution),
+    the entry matching the package name is preferred.
     Returns an empty list when *target_dir* does not exist or contains no modules.
     """
     if not os.path.isdir(target_dir):
@@ -203,26 +254,32 @@ def detect_call_modules(target_dir):
 
     # Tier 1 & 2: top_level.txt from .dist-info or .egg-info
     for suffix in (".dist-info", ".egg-info"):
+        all_entries = []
         for d in sorted(os.listdir(target_dir)):
             if d.endswith(suffix):
                 tl_path = os.path.join(target_dir, d, "top_level.txt")
-                if os.path.isfile(tl_path):
-                    try:
-                        with open(tl_path) as f:
-                            entries = [l.strip() for l in f if l.strip()]
-                    except OSError:
-                        pass
-                    else:
-                        if entries:
-                            seen = set()
-                            result = []
-                            for e in entries:
-                                root = e.split('/')[0]
-                                if root not in seen:
-                                    seen.add(root)
-                                    result.append(root)
-                            return result
-                break
+                if not os.path.isfile(tl_path):
+                    continue
+                try:
+                    with open(tl_path) as f:
+                        entries = [l.strip() for l in f if l.strip()]
+                except OSError:
+                    continue
+                if entries:
+                    all_entries.append((d, entries))
+        if not all_entries:
+            continue
+
+        # Prefer the .dist-info matching package_name when multiple present
+        if package_name and len(all_entries) > 1:
+            matched = _match_package_name(all_entries, suffix, package_name)
+            if matched is not None:
+                return matched
+
+        # Fallback: merge entries from all matching directories
+        if len(all_entries) == 1:
+            return _dedup_roots(all_entries[0][1])
+        return _merge_roots(all_entries)
 
     # Tier 3: directories with __init__.py, and namespace packages
     # (dirs without __init__.py that contain subdirs with __init__.py,

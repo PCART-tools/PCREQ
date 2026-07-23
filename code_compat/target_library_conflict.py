@@ -540,7 +540,7 @@ def get_all_library_info(library_path, library_call_module, version, lib):
         _actual_call_module = library_call_module
         if not os.path.exists(_extract_path):
             _version_root = _extract_path.rsplit('/', 1)[0]
-            _detected = detect_call_modules(_version_root)
+            _detected = detect_call_modules(_version_root, lib)
             if _detected:
                 _extract_path = os.path.join(_version_root, _detected[0])
                 _actual_call_module = _detected[0]

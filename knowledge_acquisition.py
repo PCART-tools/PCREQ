@@ -773,41 +773,44 @@ def _select_best_module_name(entries, target_dir, package_name):
 def _read_top_level_txt(target_dir, package_name):
     """Read top_level.txt from .dist-info/ or .egg-info/ to get module name.
 
-    Multi-entry: prefers package name match, then most .py files.
-    Returns module name or None.
+    Multi-.dist-info priority: prefer the directory whose name matches
+    *package_name*, then fall back to the first candidate.  This mirrors
+    the P71 fix in :func:`detect_call_modules`.
     """
     if not os.path.isdir(target_dir):
         return None
 
-    # Prefer .dist-info (PEP 427)
-    for d in sorted(os.listdir(target_dir)):
-        if d.endswith(".dist-info"):
-            tl_path = os.path.join(target_dir, d, "top_level.txt")
-            if not os.path.isfile(tl_path):
-                continue
-            try:
-                with open(tl_path) as f:
-                    entries = [l.strip() for l in f if l.strip()]
-            except OSError:
-                continue
-            sel = _select_best_module_name(entries, target_dir, package_name)
-            if sel:
-                return sel
+    # Phase A: collect all candidates from .dist-info first, then .egg-info
+    for suffix in (".dist-info", ".egg-info"):
+        all_candidates = []  # (dir_name, entries)
+        for d in sorted(os.listdir(target_dir)):
+            if d.endswith(suffix):
+                tl_path = os.path.join(target_dir, d, "top_level.txt")
+                if not os.path.isfile(tl_path):
+                    continue
+                try:
+                    with open(tl_path) as f:
+                        entries = [l.strip() for l in f if l.strip()]
+                except OSError:
+                    continue
+                if entries:
+                    all_candidates.append((d, entries))
+        if not all_candidates:
+            continue
 
-    # Fallback to .egg-info (sdist builds)
-    for d in sorted(os.listdir(target_dir)):
-        if d.endswith(".egg-info"):
-            tl_path = os.path.join(target_dir, d, "top_level.txt")
-            if not os.path.isfile(tl_path):
-                continue
-            try:
-                with open(tl_path) as f:
-                    entries = [l.strip() for l in f if l.strip()]
-            except OSError:
-                continue
-            sel = _select_best_module_name(entries, target_dir, package_name)
-            if sel:
-                return sel
+        # Phase B: prefer candidate whose directory name matches package_name
+        if package_name:
+            norm_pkg = package_name.replace("-", "_")
+            for d, entries in all_candidates:
+                d_name = d[:-(len(suffix) + 1)].rsplit("-", 1)[0]
+                if d_name.replace("-", "_") == norm_pkg:
+                    return _select_best_module_name(entries, target_dir,
+                                                    package_name)
+
+        # Phase C: fallback — first candidate (backward-compatible)
+        return _select_best_module_name(
+            all_candidates[0][1], target_dir, package_name)
+
     return None
 
 
@@ -1224,7 +1227,7 @@ def _get_all_modules(target_dir, lib):
     Falls back to ``get_library_call_module(lib)`` when no modules are
     found (non-existent directory, empty source tree, etc.).
     """
-    modules = detect_call_modules(target_dir)
+    modules = detect_call_modules(target_dir, lib)
     if not modules:
         modules = [get_library_call_module(lib)]
     return modules
@@ -1685,8 +1688,14 @@ if __name__ == '__main__':
                             if lib in _CALL_MODULE_MAP:
                                 _public_roots.add(
                                     _CALL_MODULE_MAP[lib].lower().replace("-", "_"))
-                            if _public_roots and not (_legacy_modules & _public_roots):
-                                _force_rebuild = True
+                            if _public_roots:
+                                _matched = any(
+                                    any(m == root or m.startswith(root + ".")
+                                        for root in _public_roots)
+                                    for m in _legacy_modules
+                                )
+                                if not _matched:
+                                    _force_rebuild = True
                 except (json.JSONDecodeError, OSError, KeyError, FileNotFoundError):
                     pass
                 if _force_rebuild:
