@@ -225,17 +225,18 @@ def get_new_lib(target_proj_dependency, python_version):
 
 def remove_redundant_dependencies(end_target_proj_dependency, target_library, start_version, target_version, python_version, proj_path):
     #print(target_version)
+    actual_version = end_target_proj_dependency.get(target_library, target_version)
     all_used_library = get_paths_of_import(proj_path)
     library_call_module = get_library_call_module(target_library)
     norm_lib = resolve_pkg_dir(target_library, library_path_prefix)
-    norm_ver_name = norm_ver(target_version)
+    norm_ver_name = norm_ver(actual_version)
     library_path = library_path_prefix + norm_lib + slash + norm_lib + norm_ver_name + slash + library_call_module
     all_used_library2 = get_paths_of_import(library_path)
     new_target_proj_dependency = {}
     redundant_dependencies = []
     start_dependencies = get_library_constraint_from_metadata(target_library, start_version, python_version)
     #print(start_dependencies)
-    target_dependencies = get_library_constraint_from_metadata(target_library, target_version, python_version)
+    target_dependencies = get_library_constraint_from_metadata(target_library, actual_version, python_version)
     for library in start_dependencies.keys():
         if library not in target_dependencies.keys():
             flag = False
