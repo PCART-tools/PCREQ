@@ -27,6 +27,7 @@ sacremoses==0.0.53
 scikit-learn==0.24.0
 scipy==1.7.3
 sentencepiece==0.1.91
+setuptools==68.0.0
 six==1.16.0
 smart-open==6.4.0
 spacy==3.0.1

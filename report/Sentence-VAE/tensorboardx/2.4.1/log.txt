@@ -1,5 +1,5 @@
-2026-06-17 16:40:45,242 - INFO - *************Upgrade tensorboardx from 2.0 to 2.4.1 in Sentence-VAE*************
-2026-06-17 16:40:45,245 - INFO - Checking Sentence-VAE is compatible with tensorboardx2.4.1?...
-2026-06-17 16:40:45,518 - INFO - Sentence-VAE is compatible with tensorboardx2.4.1
-2026-06-17 16:40:46,140 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:40:46,141 - INFO - Time cost: 0.9004673957824707 s
+2026-07-27 10:28:31,853 - INFO - *************Upgrade tensorboardx from 2.0 to 2.4.1 in Sentence-VAE*************
+2026-07-27 10:28:31,854 - INFO - Checking Sentence-VAE is compatible with tensorboardx2.4.1?...
+2026-07-27 10:28:32,292 - INFO - Sentence-VAE is compatible with tensorboardx2.4.1
+2026-07-27 10:28:32,933 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:28:32,933 - INFO - Time cost: 1.1162385940551758 s

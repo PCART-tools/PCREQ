@@ -1,11 +1,5 @@
-2026-06-17 17:30:04,470 - INFO - *************Upgrade matplotlib from 3.0.3 to 3.2.1 in siren*************
-2026-06-17 17:30:04,470 - INFO - Checking siren is compatible with matplotlib3.2.1?...
-2026-06-17 17:30:04,551 - INFO - siren is compatible with matplotlib3.2.1
-2026-06-17 17:31:36,459 - INFO - Checking siren is compatible with astroid2.15.8?...
-2026-06-17 17:31:36,460 - INFO - siren is compatible with astroid2.15.8
-2026-06-17 17:31:36,546 - INFO - Checking siren is compatible with pylint2.17.7?...
-2026-06-17 17:31:36,546 - INFO - siren is compatible with pylint2.17.7
-2026-06-17 17:31:36,579 - INFO - Checking siren is compatible with shapely2.0.6?...
-2026-06-17 17:31:36,579 - INFO - siren is compatible with shapely2.0.6
-2026-06-17 17:31:39,845 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:31:39,845 - INFO - Time cost: 95.3767819404602 s
+2026-07-27 11:03:21,336 - INFO - *************Upgrade matplotlib from 3.0.3 to 3.2.1 in siren*************
+2026-07-27 11:03:21,336 - INFO - Checking siren is compatible with matplotlib3.2.1?...
+2026-07-27 11:03:22,156 - INFO - siren is compatible with matplotlib3.2.1
+2026-07-27 11:05:45,436 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 11:05:45,436 - INFO - Time cost: 144.1012704372406 s

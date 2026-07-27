@@ -1,5 +1,5 @@
-2026-06-17 16:41:00,656 - INFO - *************Upgrade tensorflow from 2.4.0 to 2.4.3 in SimpleHTR*************
-2026-06-17 16:41:00,656 - INFO - Checking SimpleHTR is compatible with tensorflow2.4.3?...
-2026-06-17 16:41:23,799 - INFO - SimpleHTR is compatible with tensorflow2.4.3
-2026-06-17 16:41:34,915 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:41:34,915 - INFO - Time cost: 34.2611620426178 s
+2026-07-27 10:28:47,210 - INFO - *************Upgrade tensorflow from 2.4.0 to 2.4.3 in SimpleHTR*************
+2026-07-27 10:28:47,211 - INFO - Checking SimpleHTR is compatible with tensorflow2.4.3?...
+2026-07-27 10:29:17,803 - INFO - SimpleHTR is compatible with tensorflow2.4.3
+2026-07-27 10:30:16,508 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:30:16,508 - INFO - Time cost: 89.30307459831238 s

@@ -1,5 +1,5 @@
-2026-06-17 17:32:20,207 - INFO - *************Upgrade torch from 1.4.0 to 1.10.2 in spert*************
-2026-06-17 17:32:20,207 - INFO - Checking spert is compatible with torch1.10.2?...
-2026-06-17 17:32:22,812 - INFO - spert is compatible with torch1.10.2
-2026-06-17 17:32:26,417 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:32:26,417 - INFO - Time cost: 6.212018013000488 s
+2026-07-27 11:06:28,566 - INFO - *************Upgrade torch from 1.4.0 to 1.10.2 in spert*************
+2026-07-27 11:06:28,567 - INFO - Checking spert is compatible with torch1.10.2?...
+2026-07-27 11:06:31,508 - INFO - spert is compatible with torch1.10.2
+2026-07-27 11:06:53,129 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 11:06:53,130 - INFO - Time cost: 24.565065383911133 s

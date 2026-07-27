@@ -1,5 +1,5 @@
-2026-06-17 17:01:25,852 - INFO - *************Upgrade tensorflow from 1.5.0 to 1.13.2 in deep-belief-network*************
-2026-06-17 17:01:25,853 - INFO - Checking deep-belief-network is compatible with tensorflow1.13.2?...
-2026-06-17 17:01:53,737 - INFO - deep-belief-network is compatible with tensorflow1.13.2
-2026-06-17 17:02:08,807 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:02:08,809 - INFO - Time cost: 42.958800077438354 s
+2026-07-27 10:49:51,882 - INFO - *************Upgrade tensorflow from 1.5.0 to 1.13.2 in deep-belief-network*************
+2026-07-27 10:49:51,882 - INFO - Checking deep-belief-network is compatible with tensorflow1.13.2?...
+2026-07-27 10:50:11,084 - INFO - deep-belief-network is compatible with tensorflow1.13.2
+2026-07-27 10:50:23,297 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:50:23,298 - INFO - Time cost: 31.417453289031982 s

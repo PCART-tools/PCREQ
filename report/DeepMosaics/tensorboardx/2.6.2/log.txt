@@ -1,5 +1,5 @@
-2026-06-17 16:33:24,753 - INFO - *************Upgrade tensorboardx from 2.2 to 2.6.2 in DeepMosaics*************
-2026-06-17 16:33:24,753 - INFO - Checking DeepMosaics is compatible with tensorboardx2.6.2?...
-2026-06-17 16:33:25,123 - INFO - DeepMosaics is compatible with tensorboardx2.6.2
-2026-06-17 16:33:30,647 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:33:30,647 - INFO - Time cost: 5.896234512329102 s
+2026-07-27 10:20:10,206 - INFO - *************Upgrade tensorboardx from 2.2 to 2.6.2 in DeepMosaics*************
+2026-07-27 10:20:10,206 - INFO - Checking DeepMosaics is compatible with tensorboardx2.6.2?...
+2026-07-27 10:20:10,796 - INFO - DeepMosaics is compatible with tensorboardx2.6.2
+2026-07-27 10:20:19,603 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:20:19,603 - INFO - Time cost: 9.398797512054443 s

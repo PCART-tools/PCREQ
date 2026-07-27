@@ -1,5 +1,4 @@
 click==8.1.7
-colorama==0.4.6
 coloredlogs==15.0.1
 future==1.0.0
 humanfriendly==10.0

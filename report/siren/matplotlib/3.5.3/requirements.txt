@@ -1,7 +1,7 @@
 absl-py==0.9.0
 argh==0.26.2
 astor==0.8.1
-astroid==2.15.8
+astroid==2.3.1
 attrs==19.1.0
 autopep8==1.4.4
 backcall==0.1.0
@@ -9,10 +9,9 @@ bleach==6.0.0
 blessings==1.7
 bottle==0.12.18
 cachetools==4.0.0
-certifi==2024.8.30
+certifi==2019.6.16
 chardet==3.0.4
 click==7.0
-colorama==0.4.6
 coloredlogs==15.0.1
 configparser==4.0.2
 cprofilev==1.0.7
@@ -23,6 +22,7 @@ docker-pycreds==0.4.0
 docopt==0.6.2
 entrypoints==0.3
 fastparquet==0.3.2
+fonttools==4.22.0
 future==0.18.0
 gast==0.2.2
 git-pylint-commit-hook==2.5.1
@@ -94,7 +94,6 @@ pathtools==0.1.2
 pexpect==4.7.0
 pickleshare==0.7.5
 pillow==6.2.2
-platformdirs==2.2.0
 plotly==4.1.0
 ply==3.11
 prometheus-client==0.7.1
@@ -107,7 +106,7 @@ pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycodestyle==2.5.0
 pygments==2.4.2
-pylint==2.17.7
+pylint==2.4.2
 pyparsing==2.4.2
 pyrsistent==0.15.4
 python-dateutil==2.8.0
@@ -128,7 +127,8 @@ scipy==1.4.1
 seaborn==0.9.0
 send2trash==1.5.0
 sentry-sdk==0.11.1
-shapely==2.0.6
+setuptools==41.0.0
+shapely==1.6.4.post2
 shortuuid==0.5.0
 siren-torch==1.1
 six==1.12.0
@@ -158,6 +158,7 @@ wcwidth==0.1.7
 webencodings==0.5.1
 websocket-client==0.56.0
 werkzeug==0.16.0
+wheel==0.26.0
 widgetsnbextension==3.5.1
 wrapt==1.11.2
 zipp==0.6.0
