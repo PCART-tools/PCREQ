@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import platform
+import uuid
 
 
 from .python import Python, find_node_or_group, get_importitems, find_node_or_group_in_file_group,get_file_scope_assigns
@@ -20,7 +21,7 @@ TEXT_EXTENSIONS = ('json')
 VALID_EXTENSIONS = TEXT_EXTENSIONS
 
 
-def generate_additional_outside_json(nodes, edges):
+def generate_additional_outside_json(all_nodes, edges):
 
     def add_outside_node(outside_node):
         outside_node_name = outside_node.name_from_root
@@ -42,7 +43,7 @@ def generate_additional_outside_json(nodes, edges):
 
     return json.dumps(outside_dic)
 
-def generate_json(nodes, edges):
+def generate_json(all_nodes, edges):
 
     def extra_str_trans(key_str, value_str):
 
@@ -93,14 +94,14 @@ def write_additional_outside_output_file(outfile, nodes, edges, groups, hide_leg
                no_grouping=False, as_json=True):
 
     if as_json:
-        content = generate_additional_outside_json(nodes, edges)
+        content = generate_additional_outside_json(all_nodes, edges)
         outfile.write(content)
         return
 
 def write_file(outfile, nodes, edges, groups, hide_legend=False,
                no_grouping=False, as_json=True):
     if as_json:
-        content = generate_json(nodes, edges)
+        content = generate_json(all_nodes, edges)
         outfile.write(content)
         return
 
@@ -222,7 +223,7 @@ def map_it(root_path, sources, no_trimming, exclude_namespaces, exclude_function
             file_ast_trees.append((source, language.get_tree(source, lang_params)))
         except Exception as ex:
             if skip_parse_errors:
-                logging.warning("Could not parse %r. (%r) Skipping...", source, ex)
+                logging.debug("Could not parse %r. (%r) Skipping...", source, ex)
             else:
                 raise ex
     file_groups = []
@@ -470,22 +471,24 @@ def code2flow(raw_source_paths, output_file, language=None, hide_legend=True,
                                            skip_parse_errors, lang_params, entry_functions)
 
     if isinstance(output_file, str):
-        with open(output_file, 'w') as fh:
-            as_json = output_ext == 'json'
-            write_file(fh, nodes=all_nodes, edges=edges,
-                       groups=file_groups, hide_legend=hide_legend,
-                       no_grouping=no_grouping, as_json=as_json)
+        as_json = output_ext == 'json'
+
+        main_content = generate_json(all_nodes, edges)
+        outside_content = generate_additional_outside_json(all_nodes, edges)
+        entry_content = json.dumps(found_entry_func_list)
 
         additional_outside_output_file = output_file[:-5] + "-outside" + r".json"
-        with open(additional_outside_output_file, 'w') as fh:
-            write_additional_outside_output_file(fh, nodes=all_nodes, edges=edges,
-                       groups=file_groups, hide_legend=hide_legend,
-                       no_grouping=no_grouping, as_json=as_json)
         additional_entry_output_file = output_file[:-5] + "-entry" + r".json"
-        with open(additional_entry_output_file, 'w') as fh:
-            write_additional_entry_output_file(found_entry_func_list, fh, nodes=all_nodes, edges=edges,
-                       groups=file_groups, hide_legend=hide_legend,
-                       no_grouping=no_grouping, as_json=as_json)
+
+        for path, content in [
+            (output_file, main_content),
+            (additional_outside_output_file, outside_content),
+            (additional_entry_output_file, entry_content),
+        ]:
+            tmp = f"{path}.{uuid.uuid4().hex[:8]}.tmp"
+            with open(tmp, 'w') as fh:
+                fh.write(content)
+            os.replace(tmp, path)
 
     else:
         write_file(output_file, nodes=all_nodes, edges=edges,

@@ -1,7 +1,7 @@
 from .target_library_conflict import is_target_library_code_conflict
 from extraction.import_to_path import get_paths_of_import
 from call_graph.get_FDG import get_library_dependency_from_metadata
-from utils.util import get_library_call_module
+from utils.util import get_library_call_module, resolve_pkg_dir
 import requests, os, json, re, time
 
 library_path_prefix = ""
@@ -74,7 +74,8 @@ def update_compatibility_info(library, target_library, library_version, target_l
         else:
             new_target_library_call_module = get_library_call_module(library)
             
-            new_proj_path = library_path_prefix + library + '/' + library + library_version + '/' + new_target_library_call_module
+            norm_lib = resolve_pkg_dir(library, library_path_prefix)
+            new_proj_path = library_path_prefix + norm_lib + '/' + norm_lib + library_version + '/' + new_target_library_call_module
             new_target_proj_dependency = target_proj_dependency.copy()
             new_target_proj_dependency[library] = library_version
             is_conflict = is_target_library_code_conflict(new_proj_path, library, target_library, target_library_start_version, target_library_target_version, start_library_path, target_library_path, target_library_call_module, target_project, proj_path, new_target_proj_dependency, python_version)
@@ -98,7 +99,8 @@ def is_non_target_library_code_conflict(target_proj_dependency, proj_path, targe
         if not is_library_used(proj_path, new_target_library_call_module):    #如果项目没有使用library则跳过
             #print(proj_path)
             continue
-        new_proj_path = library_path_prefix + library + '/' + library + target_proj_dependency[library] + '/' + new_target_library_call_module
+        norm_lib = resolve_pkg_dir(library, library_path_prefix)
+        new_proj_path = library_path_prefix + norm_lib + '/' + norm_lib + target_proj_dependency[library] + '/' + new_target_library_call_module
         #print(library)
         #start = time.time()
         key1 = tuple(sorted([(library, target_proj_dependency[library]), (target_library, target_version)]))

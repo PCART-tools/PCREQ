@@ -27,5 +27,6 @@ termcolor==1.1.0
 tqdm==4.32.1
 typing_extensions==4.1.1
 werkzeug==2.0.3
+wheel==0.26.0
 wrapt==1.11.1
 zipp==3.6.0

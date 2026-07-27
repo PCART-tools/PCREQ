@@ -1,7 +1,7 @@
-2026-06-17 16:36:14,806 - INFO - *************Upgrade pillow from 7.2.0 to 8.1.0 in MASTER-pytorch*************
-2026-06-17 16:36:14,806 - INFO - Checking MASTER-pytorch is compatible with pillow8.1.0?...
-2026-06-17 16:36:14,882 - INFO - MASTER-pytorch is compatible with pillow8.1.0
-2026-06-17 16:36:16,052 - INFO - Checking torchvision0.6.1 is compatible with pillow8.1.0?...
-2026-06-17 16:36:16,115 - INFO - torchvision0.6.1 is compatible with pillow8.1.0
-2026-06-17 16:36:16,607 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:36:16,608 - INFO - Time cost: 1.8024623394012451 s
+2026-07-27 10:23:17,424 - INFO - *************Upgrade pillow from 7.2.0 to 8.1.0 in MASTER-pytorch*************
+2026-07-27 10:23:17,425 - INFO - Checking MASTER-pytorch is compatible with pillow8.1.0?...
+2026-07-27 10:23:17,802 - INFO - MASTER-pytorch is compatible with pillow8.1.0
+2026-07-27 10:23:19,361 - INFO - Checking torchvision0.6.1 is compatible with pillow8.1.0?...
+2026-07-27 10:23:19,425 - INFO - torchvision0.6.1 is compatible with pillow8.1.0
+2026-07-27 10:23:19,935 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:23:19,935 - INFO - Time cost: 2.5229392051696777 s

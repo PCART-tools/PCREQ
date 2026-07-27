@@ -1,5 +1,5 @@
-2026-06-17 17:01:25,447 - INFO - *************Upgrade scikit-learn from 0.18.1 to 0.18.2 in deep-belief-network*************
-2026-06-17 17:01:25,447 - INFO - Checking deep-belief-network is compatible with scikit-learn0.18.2?...
-2026-06-17 17:01:38,500 - INFO - deep-belief-network is compatible with scikit-learn0.18.2
-2026-06-17 17:01:46,252 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:01:46,252 - INFO - Time cost: 20.807533264160156 s
+2026-07-27 10:49:29,098 - INFO - *************Upgrade scikit-learn from 0.18.1 to 0.18.2 in deep-belief-network*************
+2026-07-27 10:49:29,098 - INFO - Checking deep-belief-network is compatible with scikit-learn0.18.2?...
+2026-07-27 10:49:40,215 - INFO - deep-belief-network is compatible with scikit-learn0.18.2
+2026-07-27 10:49:53,539 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:49:53,539 - INFO - Time cost: 24.442935466766357 s

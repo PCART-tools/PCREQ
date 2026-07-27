@@ -1,5 +1,5 @@
-2026-06-17 16:38:55,403 - INFO - *************Upgrade scikit-image from 0.15.0 to 0.17.2 in RetinaFace_Pytorch*************
-2026-06-17 16:38:55,403 - INFO - Checking RetinaFace_Pytorch is compatible with scikit-image0.17.2?...
-2026-06-17 16:39:00,587 - INFO - RetinaFace_Pytorch is compatible with scikit-image0.17.2
-2026-06-17 16:39:09,174 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:39:09,174 - INFO - Time cost: 13.774512767791748 s
+2026-07-27 10:26:39,034 - INFO - *************Upgrade scikit-image from 0.15.0 to 0.17.2 in RetinaFace_Pytorch*************
+2026-07-27 10:26:39,034 - INFO - Checking RetinaFace_Pytorch is compatible with scikit-image0.17.2?...
+2026-07-27 10:26:44,036 - INFO - RetinaFace_Pytorch is compatible with scikit-image0.17.2
+2026-07-27 10:26:51,460 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:26:51,461 - INFO - Time cost: 12.460324764251709 s

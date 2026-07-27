@@ -1,11 +1,5 @@
-2026-06-17 16:24:44,249 - INFO - *************Upgrade matplotlib from 3.1.1 to 3.5.1 in Bert-Multi-Label-Text-Classification*************
-2026-06-17 16:24:44,249 - INFO - Checking Bert-Multi-Label-Text-Classification is compatible with matplotlib3.5.1?...
-2026-06-17 16:24:52,615 - INFO - Bert-Multi-Label-Text-Classification is compatible with matplotlib3.5.1
-2026-06-17 16:25:24,744 - INFO - Checking matplotlib3.5.1 is compatible with certifi2024.8.30?...
-2026-06-17 16:25:37,811 - INFO - matplotlib3.5.1 is compatible with certifi2024.8.30
-2026-06-17 16:25:37,832 - INFO - Checking requests2.22.0 is compatible with certifi2024.8.30?...
-2026-06-17 16:25:38,046 - INFO - requests2.22.0 is compatible with certifi2024.8.30
-2026-06-17 16:25:38,046 - INFO - Checking Bert-Multi-Label-Text-Classification is compatible with certifi2024.8.30?...
-2026-06-17 16:25:38,049 - INFO - Bert-Multi-Label-Text-Classification is compatible with certifi2024.8.30
-2026-06-17 16:25:44,274 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:25:44,275 - INFO - Time cost: 60.02712941169739 s
+2026-07-27 10:10:50,958 - INFO - *************Upgrade matplotlib from 3.1.1 to 3.5.1 in Bert-Multi-Label-Text-Classification*************
+2026-07-27 10:10:50,959 - INFO - Checking Bert-Multi-Label-Text-Classification is compatible with matplotlib3.5.1?...
+2026-07-27 10:11:00,115 - INFO - Bert-Multi-Label-Text-Classification is compatible with matplotlib3.5.1
+2026-07-27 10:11:39,749 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:11:39,749 - INFO - Time cost: 48.79183101654053 s

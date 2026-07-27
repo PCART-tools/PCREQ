@@ -8,6 +8,7 @@ google-pasta==0.1.6
 grpcio==1.48.2
 h5py==2.10.0
 importlib-metadata==4.8.3
+keras-applications==1.0.8
 keras-preprocessing==1.1.2
 markdown==3.3.7
 mock==5.1.0
@@ -26,5 +27,6 @@ termcolor==1.1.0
 tqdm==4.32.1
 typing_extensions==4.1.1
 werkzeug==2.0.3
+wheel==0.26.0
 wrapt==1.11.1
 zipp==3.6.0

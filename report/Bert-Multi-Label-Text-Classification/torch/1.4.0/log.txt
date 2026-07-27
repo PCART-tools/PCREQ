@@ -1,5 +1,5 @@
-2026-06-17 16:24:44,583 - INFO - *************Upgrade torch from 1.3.0 to 1.4.0 in Bert-Multi-Label-Text-Classification*************
-2026-06-17 16:24:44,583 - INFO - Checking Bert-Multi-Label-Text-Classification is compatible with torch1.4.0?...
-2026-06-17 16:24:49,375 - INFO - Bert-Multi-Label-Text-Classification is compatible with torch1.4.0
-2026-06-17 16:25:30,694 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:25:30,695 - INFO - Time cost: 46.116567850112915 s
+2026-07-27 10:10:51,462 - INFO - *************Upgrade torch from 1.3.0 to 1.4.0 in Bert-Multi-Label-Text-Classification*************
+2026-07-27 10:10:51,463 - INFO - Checking Bert-Multi-Label-Text-Classification is compatible with torch1.4.0?...
+2026-07-27 10:10:53,922 - INFO - Bert-Multi-Label-Text-Classification is compatible with torch1.4.0
+2026-07-27 10:11:15,527 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:11:15,528 - INFO - Time cost: 24.349454641342163 s

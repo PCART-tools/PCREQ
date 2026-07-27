@@ -1,5 +1,5 @@
-2026-06-17 16:35:30,189 - INFO - *************Upgrade seqeval from 0.0.12 to 0.0.16 in JointBERT*************
-2026-06-17 16:35:30,189 - INFO - Checking JointBERT is compatible with seqeval0.0.16?...
-2026-06-17 16:35:30,216 - INFO - JointBERT is compatible with seqeval0.0.16
-2026-06-17 16:35:33,742 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:35:33,742 - INFO - Time cost: 3.5546493530273438 s
+2026-07-27 10:22:30,369 - INFO - *************Upgrade seqeval from 0.0.12 to 0.0.16 in JointBERT*************
+2026-07-27 10:22:30,369 - INFO - Checking JointBERT is compatible with seqeval0.0.16?...
+2026-07-27 10:22:30,553 - INFO - JointBERT is compatible with seqeval0.0.16
+2026-07-27 10:22:35,498 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:22:35,498 - INFO - Time cost: 5.145081996917725 s

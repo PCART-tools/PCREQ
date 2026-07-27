@@ -2,7 +2,6 @@ absl-py==2.1.0
 cachetools==5.4.0
 certifi==2017.4.17
 charset-normalizer==3.3.2
-colorama==0.4.6
 cycler==0.11.0
 dataclasses==0.6
 fsspec==2023.1.0
@@ -13,6 +12,7 @@ grpcio==1.62.2
 idna==3.7
 importlib-metadata==6.7.0
 kiwisolver==1.4.5
+lightning-utilities==0.4.2
 markdown==3.4.4
 markupsafe==2.1.5
 matplotlib==3.3.3
@@ -31,6 +31,7 @@ requests==2.31.0
 requests-oauthlib==2.0.0
 rsa==4.9
 scipy==1.5.4
+setuptools==41.0.0
 six==1.16.0
 tensorboard==2.11.2
 tensorboard-data-server==0.6.1
@@ -41,4 +42,5 @@ tqdm==4.66.4
 typing_extensions==4.7.1
 urllib3==2.0.7
 werkzeug==2.2.3
+wheel==0.26.0
 zipp==3.15.0

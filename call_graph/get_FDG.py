@@ -3,8 +3,11 @@ import json
 import os
 import ast, re
 import platform
-from packaging.specifiers import SpecifierSet
-from packaging.version import Version
+import time
+import uuid
+import logging
+from packaging.markers import Marker
+from utils.util import norm_pkg, resolve_pkg_dir, norm_ver
 
 if (platform.system() == 'Windows'):
     slash = "\\"
@@ -57,46 +60,47 @@ def remove_parentheses_from_end(elements):
     # 使用列表推导式处理每个元素
     return [element.rstrip('()') for element in elements]
 
-def is_version_compat(proj_cons, lib_cons):
-    # 创建一个 SpecifierSet，表示兼容版本范围
-    compatible_versions = SpecifierSet(lib_cons)
-
-    if proj_cons in compatible_versions:
-        return True
-    else:
-        return False
-
 def download_json(url, filename):
-    # 发送 HTTP GET 请求
-    response = requests.get(url)
-    # 确认请求成功
-    if response.status_code == 200:
-        # 将 JSON 数据加载成 Python 对象
-        data = response.json()
-        # 打开一个文件用于写入
-        with open(filename, 'w') as file:
-            # 将 Python 对象写入文件
-            json.dump(data, file, indent=4)
-        print(f"Data has been saved to {filename}")
-    else:
-        print(f"Failed to retrieve data: Status code {response.status_code}")
+    for retry in range(3):
+        try:
+            response = requests.get(url, timeout=60)
+            if response.status_code == 200:
+                data = response.json()
+                tmp_filename = f"{filename}.{uuid.uuid4().hex[:8]}.tmp"
+                with open(tmp_filename, 'w') as file:
+                    json.dump(data, file, indent=4)
+                os.replace(tmp_filename, filename)
+                logging.debug("Constraint saved to %s", filename)
+                return
+            elif response.status_code == 404:
+                tmp_filename = f"{filename}.{uuid.uuid4().hex[:8]}.tmp"
+                with open(tmp_filename, 'w') as file:
+                    json.dump({"message": "Not Found"}, file)
+                os.replace(tmp_filename, filename)
+                return
+            else:
+                logging.warning("Failed to retrieve constraint: HTTP %s", response.status_code)
+                return
+        except requests.RequestException:
+            if retry < 2:
+                time.sleep(2 ** retry)
+    logging.error("Failed to download constraint after 3 retries: %s", url)
 
 def download_from_data(package, package_version):
-    print(package)
-    url = 'https://pypi.tuna.tsinghua.edu.cn/pypi/' + package  +'/json'
-    #print(url)
-    #package_versions = ["1.2.0"]
-    #package_versions = fetch_package_versions(url)
-    #time.sleep(2)
-    #print(package_versions)
-    url2 = 'https://pypi.org/pypi/' + package + '/' + package_version +'/json'
-    path = constraint_path_prefix + package + '/' + package + package_version
+    norm_name = norm_pkg(package)
+    norm_ver_name = norm_ver(package_version)
+    logging.debug("Downloading constraint data for %s", package)
+    url = 'https://pypi.tuna.tsinghua.edu.cn/pypi/' + norm_name + '/json'
+    # PyPI API URL requires RAW version string
+    url2 = 'https://pypi.org/pypi/' + norm_name + '/' + package_version + '/json'
+    # Filesystem path uses NORMALIZED version
+    path = constraint_path_prefix + norm_name + '/' + norm_name + norm_ver_name
     if not os.path.exists(path):
         try:
-            os.makedirs(path)
+            os.makedirs(path, exist_ok=True)
         except OSError:
             return
-    download_json(url2, path + '/' + package + '.json')
+    download_json(url2, path + '/' + norm_name + '.json')
 
 def remove_elements_with_extra(lst):
     # 使用列表推导式过滤掉包含'docs'或'tests'的元素
@@ -109,42 +113,66 @@ def remove_elements_with_extra(lst):
             new_requires_dist.append(item)
     return new_requires_dist
 
-def remove_incompat_python_version(requires_dist, python_version):  
-    #TODO 目前是将所有对python_version有约束的都去掉，但是应该考虑是否符合约束
+def remove_incompat_python_version(requires_dist, python_version):
+    """Drop dependencies whose ``python_version`` marker is incompatible.
+
+    Entries without markers are always kept.  Only markers that contain
+    ``python_version`` are evaluated; markers without it (``sys_platform``,
+    ``extra``, ``os_name``, etc.) are kept as-is — keeping a pure-platform
+    dependency is harmless (extra dep on other platforms), but dropping a
+    version constraint with a platform marker would make it universal and
+    force unnecessary upgrades (e.g. Darwin-only ``numpy>=1.21.0`` forcing
+    upgrade on Linux).
+    """
     new_requires_dist = []
+    env = {"python_version": python_version}
     for item in requires_dist:
-        if 'python_version' not in item:
+        if ";" not in item:
             new_requires_dist.append(item)
-        '''
-        else:
-            new_item = item.split(";")[-1]
-            if "and" in new_item:
-                i = new_item.split("and")[0]
-                new_i = i.replace(" ", "")
-                i_require_python_version = new_i.replace("python_version", "")
-                i_require_python_version = i_require_python_version.replace("\"", "")
-                i_require_python_version = i_require_python_version.replace("\'", "")
-                j = new_item.split("and")[-1]
-                new_j = j.replace(" ", "")
-                j_require_python_version = new_j.replace("python_version", "")
-                j_require_python_version = j_require_python_version.replace("\"", "")
-                j_require_python_version = j_require_python_version.replace("\'", "")
-                require_python_version = i_require_python_version + "," +j_require_python_version
-                #print(require_python_version)
-            else:
-                new_item = new_item.replace(" ", "")
-                require_python_version = new_item.replace("python_version", "")
-                require_python_version = require_python_version.replace("\"", "")
-                require_python_version = require_python_version.replace("\'", "")
-                #print(require_python_version)
-            #print(new_item.replace(" ", ""))
-            try:
-                if is_version_compat(python_version, require_python_version):
-                    new_requires_dist.append(item)
-            except:
+            continue
+        _req_part, marker_str = item.split(";", 1)
+        marker_str = marker_str.strip()
+        # Non-python_version markers (sys_platform, os_name, etc.)
+        # are evaluated against the current platform so that
+        # platform-specific dependencies (e.g. colorama on Windows,
+        # appnope on macOS) are not included on other platforms.
+        if "python_version" not in marker_str:
+            if "extra" in marker_str:
+                new_requires_dist.append(item)  # keep unconditionally, handled by filter_extra_markers
                 continue
-        '''
+            try:
+                m = Marker(marker_str)
+                if m.evaluate():
+                    new_requires_dist.append(item)
+            except Exception:
+                # Malformed marker — keep the dependency (safe default)
+                new_requires_dist.append(item)
+        else:
+            try:
+                m = Marker(marker_str)
+                if m.evaluate(env):
+                    new_requires_dist.append(item)
+            except Exception:
+                # Malformed marker — keep the dependency (safe default)
+                new_requires_dist.append(item)
     return new_requires_dist
+
+def filter_extra_markers(requires_dist):
+    """Drop dependencies with ``extra`` markers (optional deps pip won't install).
+
+    Only called in the Z3 constraint path, not in FDG/conflict-detection path.
+    FDG needs extra edges for complete dependency graph connectivity.
+    """
+    result = []
+    for item in requires_dist:
+        if ";" not in item:
+            result.append(item)
+            continue
+        _req_part, marker_str = item.split(";", 1)
+        if "extra" in marker_str.strip():
+            continue
+        result.append(item)
+    return result
 
 def get_tree(filename):
     def get_tree_with_feature_version(filename, feature_version=None):
@@ -220,7 +248,7 @@ def get_packname_and_cons_from_setup(librarypath):
         if type(element) == ast.Call and ((type(element.func) == ast.Name and element.func.id == "setup") or
                                           ((type(element.func) == ast.Attribute and type(element.func.value)==ast.Name and element.func.value.id == "setuptools" and element.func.attr=="setup"))):
             for keyword in element.keywords:
-                if keyword.arg in ["install_requires","setup_requires"]:
+                if keyword.arg == "install_requires":
                     install_requires = keyword.value
                     break
 
@@ -263,73 +291,200 @@ def get_packname_and_cons_from_setup(librarypath):
 
     return res
 
-def get_library_constraint_from_metadata(pkg, version, python_version):
+
+def _resolve_pkg_dir(pkg):
+    return resolve_pkg_dir(pkg, constraint_path_prefix, library_path_prefix)
+
+
+def try_read_constraint_json(pkg, version):
+    """Read constraint JSON, trying PEP 503 name then underscore fallback.
+
+    If the JSON is not found locally, download it from PyPI first
+    (then retry the read).  This mirrors the v1.0.1 behaviour and
+    prevents silent loss of dependency data when the KB is missing
+    a specific version.
+    """
+    norm_name = norm_pkg(pkg)
+    alt_name = pkg.lower().replace('-', '_')
+    nv = norm_ver(version)
+    for name in (norm_name, alt_name):
+        json_path = f"{constraint_path_prefix}{name}/{name}{nv}/{name}.json"
+        if os.path.isfile(json_path):
+            try:
+                with open(json_path, 'r') as file:
+                    return json.load(file), None
+            except (json.JSONDecodeError, OSError):
+                continue
+
+    # Point 34: download from PyPI when not found locally
+    logging.debug("Constraint JSON not found locally, downloading: %s==%s",
+                  pkg, version)
+    try:
+        download_from_data(pkg, version)
+    except Exception:
+        logging.debug("Failed to download constraint for %s==%s", pkg, version,
+                      exc_info=True)
+        return None, None
+
+    # Retry after download
+    for name in (norm_name, alt_name):
+        json_path = f"{constraint_path_prefix}{name}/{name}{nv}/{name}.json"
+        if os.path.isfile(json_path):
+            try:
+                with open(json_path, 'r') as file:
+                    return json.load(file), None
+            except (json.JSONDecodeError, OSError):
+                continue
+    return None, None
+
+
+def get_library_constraint_from_metadata(pkg, version, python_version, filter_extras=True):
     res = {}
-    #从setup.py中提取依赖
-    library_path = f"{library_path_prefix}{pkg}/{pkg}{version}/{pkg}"
-    if not os.path.exists(library_path):
-        pass
-    else:
+    norm_pkg_name = _resolve_pkg_dir(pkg)
+    norm_ver_name = norm_ver(version)
+    target_dir = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/"
+
+    # Priority chain: setup.py → METADATA → egg-info/requires.txt → PyPI JSON
+    # setup.py is the authoritative source (developer-written); METADATA
+    # supplements with entries not in setup.py.
+    metadata_found = False
+    metadata_is_old = False  # Metadata-Version ≤ 2.0 may lack Requires-Dist
+    requires_dist = None
+
+    # Priority 0: setup.py as authoritative baseline
+    library_path = f"{library_path_prefix}{norm_pkg_name}/{norm_pkg_name}{norm_ver_name}/{norm_pkg_name}"
+    if os.path.exists(library_path):
         s = get_packname_and_cons_from_setup(library_path)
-        #print(s)
         for i in s:
-            key = re.sub(r'\[.*\]', '', i[0]).lower()
+            key = re.sub(r'\[.*\]', '', i[0]).lower().replace('_', '-')
             if len(i) == 2:
                 res[key] = i[1].replace("-", ".")
             else:
                 res[key] = None
-    #print(res)
-    #从metadata中提取依赖
-    metadata_path = f"{library_path_prefix}{pkg}/{pkg}{version}/{pkg}-{version}.dist-info/METADATA"
-    if not os.path.exists(metadata_path):
-        try:
-            with open(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json', 'r') as file:
-                data = json.load(file)
-        except:
-            print(f"No {pkg}: {version} version constraint")
-            download_from_data(pkg, version)
 
-        # 提取 'requires_dist' 键的内容
-        try :
-            requires_dist = data['info']['requires_dist']
-        except:
-            requires_dist= None
-    else:
-        try:
-            with open(metadata_path, 'r') as file:
-                metadata = file.read()
-            #print(metadata)
-        except:
-            metadata = None
-        if metadata is not None:
-            requires_dist_pattern = r"Requires-Dist: (.+?)(?=\n|$)"
-            requires_dist = re.findall(requires_dist_pattern, metadata) 
+    # Priority 1: scan for *.dist-info/METADATA (not fixed path —
+    #   wheel/sdist may use underscore, different case, etc.)
+    # Prefer the dist-info matching the package name; old KB may have
+    # leftover dist-info dirs from pip-installed dependencies.
+    if os.path.isdir(target_dir):
+        candidates = []
+        for item in os.listdir(target_dir):
+            if item.endswith(".dist-info"):
+                candidate = os.path.join(target_dir, item, "METADATA")
+                if os.path.isfile(candidate):
+                    # score: 0 = name match, 1 = no match
+                    pkg_lower = pkg.lower().replace("-", "_")
+                    item_lower = item.lower().replace("-", "_")
+                    score = 0 if item_lower.startswith(pkg_lower) else 1
+                    candidates.append((score, candidate))
+        if candidates:
+            candidates.sort(key=lambda x: x[0])
+            metadata_path = candidates[0][1]
+            metadata_found = True
+            try:
+                with open(metadata_path, 'r') as file:
+                    metadata = file.read()
+            except OSError:
+                metadata = None
+            if metadata is not None:
+                requires_dist_pattern = r"Requires-Dist: (.+?)(?=\n|$)"
+                requires_dist = re.findall(requires_dist_pattern, metadata)
+                # Detect old-format METADATA that predates Requires-Dist
+                mv_match = re.search(
+                    r"^Metadata-Version:\s*([\d.]+)", metadata,
+                    re.MULTILINE | re.IGNORECASE)
+                if mv_match:
+                    try:
+                        metadata_is_old = (
+                            tuple(map(int, mv_match.group(1).split(".")))
+                            <= (2, 0)
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
+    if not metadata_found:
+        # Priority 2: .egg-info/requires.txt
+        egg_requires = None
+        if os.path.isdir(target_dir):
+            for item in os.listdir(target_dir):
+                if item.endswith('.egg-info'):
+                    req_path = os.path.join(target_dir, item, 'requires.txt')
+                    if os.path.isfile(req_path):
+                        try:
+                            egg_requires = []
+                            with open(req_path, 'r') as f:
+                                lines = f.read().split('\n')
+                            _i = 0
+                            while _i < len(lines):
+                                _line = lines[_i].strip()
+                                if not _line:
+                                    _i += 1
+                                    continue
+                                # Point 31: [extra_name] → stop (but [:env] is OK)
+                                if _line.startswith('[') and not _line.startswith('[:'):
+                                    break
+                                # [:env_marker] → prepend to next line
+                                if _line.startswith('[:'):
+                                    _cond = _line[2:-1]
+                                    _i += 1
+                                    if _i < len(lines) and lines[_i].strip():
+                                        _dep = lines[_i].strip()
+                                        _dep_name = _dep.split('<')[0].split('>')[0].split('=')[0].split('!')[0].split(';')[0].strip()
+                                        _dep_rest = _dep[len(_dep_name):]
+                                        _dep_name = _dep_name.replace('_', '-')
+                                        egg_requires.append(f"{_dep_name}{_dep_rest} ; {_cond}")
+                                else:
+                                    # Normalize underscore → hyphen in dep name
+                                    _dep_name = _line.split('<')[0].split('>')[0].split('=')[0].split('!')[0].split(';')[0].strip()
+                                    _dep_rest = _line[len(_dep_name):]
+                                    _dep_name = _dep_name.replace('_', '-')
+                                    egg_requires.append(f"{_dep_name}{_dep_rest}")
+                                _i += 1
+                        except OSError:
+                            pass
+                    break
+        if egg_requires is not None:
+            requires_dist = egg_requires
         else:
-            requires_dist = None
-    #print(requires_dist)
-    
-    if requires_dist is None or len(requires_dist) == 0:
-        try:
-            with open(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json', 'r') as file:
-                data = json.load(file)
-            #print(constraint_path_prefix + pkg + '/' + pkg + version + '/' + pkg +'.json')
-        except:
-            print(f"No {pkg}: {version} version constraint")
-            download_from_data(pkg, version)
+            # Priority 3: PyPI JSON fallback
+            logging.debug("Falling back to PyPI JSON for %s==%s constraints",
+                          pkg, version)
+            data, _ = try_read_constraint_json(pkg, version)
+            if data is not None:
+                try:
+                    requires_dist = data['info']['requires_dist']
+                except (KeyError, TypeError):
+                    requires_dist = None
+            else:
+                logging.debug("No constraint JSON for %s==%s", pkg, version)
+                requires_dist = None
 
-        # 提取 'requires_dist' 键的内容
-        try :
-            requires_dist = data['info']['requires_dist']
-        except:
-            requires_dist= None
-    #print(requires_dist)
-                     
+    # Fall back to PyPI JSON when:
+    # 1. No artifact metadata was found at all (not metadata_found), OR
+    # 2. Metadata-Version ≤ 2.0, which predates Requires-Dist —
+    #    an empty result means "format too old", not zero-dependency.
+    # Modern METADATA (≥2.1) with empty Requires-Dist IS authoritative.
+    if not metadata_found or metadata_is_old:
+        if requires_dist is None or len(requires_dist) == 0:
+            logging.debug("No requires_dist in artifact metadata for %s==%s, "
+                           "trying PyPI JSON", pkg, version)
+            data, _ = try_read_constraint_json(pkg, version)
+            if data is not None:
+                try:
+                    requires_dist = data['info']['requires_dist']
+                except (KeyError, TypeError):
+                    requires_dist = None
+            else:
+                logging.debug("No constraint data for %s==%s", pkg, version)
+                requires_dist = None
+
     if requires_dist is not None:
         requires_dist = remove_elements_with_extra(requires_dist)
         requires_dist = remove_incompat_python_version(requires_dist, python_version)
-        #TODO 提取包的时候注意后面有关python的信息
+        if filter_extras:
+            requires_dist = filter_extra_markers(requires_dist)
+
         new_requires_dist = split_and_take_first_part(requires_dist)
-        #print(f"{pkg}{version}: {new_requires_dist}")
         for i in range(len(requires_dist)):
             tmp = requires_dist[i]
             tmp = tmp.split(';')[0]
@@ -338,24 +493,25 @@ def get_library_constraint_from_metadata(pkg, version, python_version):
             new_requires_dist[i] = remove_parentheses_from_end(tmp1)
     else:
         new_requires_dist = None
-            #print(f"{pkg}{version}: {new_requires_dist}")
 
-    #print(new_requires_dist)
+    # METADATA / egg-info / JSON supplements setup.py (does not overwrite)
     if new_requires_dist is not None:
-        #print(new_requires_dist)
         for i in new_requires_dist:
             try:
-                key = re.sub(r'\[.*\]', '', i[0]).lower()
-                res[key] = i[1].replace("-", ".")
-            except:
-                res[i[0]] = None
-            #res.append(i)  
+                key = re.sub(r'\[.*\]', '', i[0]).lower().replace('_', '-')
+                if key not in res:  # setup.py is authoritative
+                    res[key] = i[1].replace("-", ".")
+            except Exception:
+                key = i[0].lower().replace('_', '-')
+                if key not in res:
+                    res[key] = None
+
     return res 
 
 def get_library_dependency_from_metadata(pkg, version, python_version):
     res = []
 
-    library_constraint = get_library_constraint_from_metadata(pkg, version, python_version)
+    library_constraint = get_library_constraint_from_metadata(pkg, version, python_version, filter_extras=False)
     for library in library_constraint:
         res.append(library)
 
@@ -374,13 +530,13 @@ def get_FDG_from_requirements(proj_dependency, python_version):
     return res
 
 def reachable_nodes(graph, start_node):
-    visited = set()
+    visited = {}  # dict preserves DFS insertion order (Python 3.7+)
     #start_node = start_node.lower
 
     def dfs(node):
         if node not in visited:
             #print(node)
-            visited.add(node)
+            visited[node] = True
             for neighbor in graph.get(node, []):
                 dfs(neighbor)
 

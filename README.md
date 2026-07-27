@@ -1,5 +1,12 @@
 ![image](overview.png)
 
+## News
+
+- **2026-07-27** - Released [PCREQ v1.1.0](https://github.com/PCART-tools/PCREQ/releases/tag/v1.1.0),
+  featuring a rewritten knowledge-base pipeline (direct PyPI download replacing `pip install --target`),
+  end-to-end determinism (PYTHONHASHSEED elimination), corrected Z3 version solving with user-pin
+  retention and `Requires-Python` enforcement, and a four-tier call-module detection fallback.
+
 ## What is PCREQ?
 PCREQ is an automated tool for inferring compatible requirements for Python third-party library (TPL) upgrades. It is the first to achieve a fully automated process (end-to-end) that includes `knowledge acquisition`, `version compatibility assessment`, `invoked APIs and modules extraction`, `code compatibility assessment`, and `missing TPL completion`. PCREQ specializes in generating a compatible `requirements.txt` when upgrading a target TPL through a comprehensive analysis of both version and code compatibility issues.
 
@@ -39,24 +46,36 @@ Given the potentially large knowledge size, `knowledgePath` supports custom stor
 
 
 ### Step 2: Knowledge Acquisition
-The extracted knowledge (Third-party library source code) of REQBench can be accessed at [libraries-Part1](https://doi.org/10.5281/zenodo.16150223), [libraries-Part2](https://doi.org/10.5281/zenodo.16152703), [libraries-Part3](https://doi.org/10.5281/zenodo.16152831).
-To use the downloaded knowledge, run:
-```bash
-cd /home/usr/knowledge/
-mkdir libraries
-tar -xzvf *.tar.gz -C libraries
-```
 
-The extracted knowledge (extracted code entities, candidate versions, and version constraints) of REQBench can be accessed at [Entities, Versions, Constraints](https://doi.org/10.5281/zenodo.16160351).
-To use the downloaded knowledge, run:
-```bash
-cd /home/usr/knowledge/
-tar -xzvf *.tar.gz -C .
-```
+#### Option 1: Build KB from Scratch
 
-**Run Command**
+v1.1.0 builds the knowledge base directly from PyPI by downloading and unpacking wheels/sdists locally
+without `pip install --target`, producing a fully reproducible, Linux-only KB.
 ```shell
 python knowledge_acquisition.py --config config.json
+python batch_knowledge.py --config-dir /path/to/REQBench/configure  # batch build
+```
+
+#### Option 2: Incremental Update from Pre-built KB
+
+Download the pre-built v1.0.x KB from Zenodo:
+
+- Third-party library source code: [libraries-Part1](https://doi.org/10.5281/zenodo.16150223), [libraries-Part2](https://doi.org/10.5281/zenodo.16152703), [libraries-Part3](https://doi.org/10.5281/zenodo.16152831)
+- Entities, versions, and constraints: [Entities, Versions, Constraints](https://doi.org/10.5281/zenodo.16160351)
+
+```bash
+cd /path/to/knowledge/
+mkdir libraries
+tar -xzvf *.tar.gz -C libraries      # source code
+tar -xzvf *.tar.gz -C .              # entities, versions, constraints
+```
+
+Then point `knowledgePath` at the extracted KB and run v1.1.0's `knowledge_acquisition.py`.
+The legacy-API consistency check detects mismatched API JSONs and triggers selective re-extraction
+for affected packages — no full rebuild required.
+```shell
+python knowledge_acquisition.py --config config.json
+python batch_knowledge.py --config-dir /path/to/REQBench/configure  # batch incremental update
 ```
 
 ### Step 3: Compatible Upgraded requirements.txt Generation

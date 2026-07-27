@@ -1,7 +1,7 @@
-2026-06-17 17:29:28,715 - INFO - *************Upgrade torch from 1.0.1 to 1.3.0 in siamese-pytorch*************
-2026-06-17 17:29:28,722 - INFO - Checking siamese-pytorch is compatible with torch1.3.0?...
-2026-06-17 17:29:31,185 - INFO - siamese-pytorch is compatible with torch1.3.0
-2026-06-17 17:29:34,896 - INFO - Checking torchvision0.2.2 is compatible with torch1.3.0?...
-2026-06-17 17:29:35,176 - INFO - torchvision0.2.2 is compatible with torch1.3.0
-2026-06-17 17:29:36,884 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:29:36,884 - INFO - Time cost: 8.173644304275513 s
+2026-07-27 11:02:46,276 - INFO - *************Upgrade torch from 1.0.1 to 1.3.0 in siamese-pytorch*************
+2026-07-27 11:02:46,277 - INFO - Checking siamese-pytorch is compatible with torch1.3.0?...
+2026-07-27 11:02:48,172 - INFO - siamese-pytorch is compatible with torch1.3.0
+2026-07-27 11:02:52,125 - INFO - Checking torchvision0.2.2 is compatible with torch1.3.0?...
+2026-07-27 11:02:52,361 - INFO - torchvision0.2.2 is compatible with torch1.3.0
+2026-07-27 11:02:54,384 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 11:02:54,384 - INFO - Time cost: 8.110234260559082 s

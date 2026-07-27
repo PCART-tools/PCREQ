@@ -1,23 +1,23 @@
-2026-06-17 17:01:45,032 - INFO - *************Upgrade tensorflow from 1.5.0 to 2.1.0 in deep-belief-network*************
-2026-06-17 17:01:45,032 - INFO - Checking deep-belief-network is compatible with tensorflow2.1.0?...
-2026-06-17 17:02:01,329 - INFO - deep-belief-network is not compatible with tensorflow2.1.0-The tensorflow.python.training.gradient_descent.GradientDescentOptimizer.__init__ is deprecated.
-2026-06-17 17:02:01,361 - INFO - deep-belief-network is not compatible with tensorflow-2.1.0, change to tensorflow-2.0.4
-2026-06-17 17:02:01,362 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.4?...
-2026-06-17 17:02:20,478 - INFO - deep-belief-network is not compatible with tensorflow2.0.4-The tensorflow.python.ops.nn_ops.softmax_cross_entropy_with_logits_v2 is deprecated.
-2026-06-17 17:02:20,516 - INFO - deep-belief-network is not compatible with tensorflow-2.0.4, change to tensorflow-2.0.3
-2026-06-17 17:02:20,516 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.3?...
-2026-06-17 17:02:37,203 - INFO - deep-belief-network is not compatible with tensorflow2.0.3-The tensorflow.python.ops.nn_ops.softmax_cross_entropy_with_logits_v2 is deprecated.
-2026-06-17 17:02:37,226 - INFO - deep-belief-network is not compatible with tensorflow-2.0.3, change to tensorflow-2.0.2
-2026-06-17 17:02:37,226 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.2?...
-2026-06-17 17:02:53,738 - INFO - deep-belief-network is not compatible with tensorflow2.0.2-The tensorflow.python.ops.nn_ops.softmax_cross_entropy_with_logits_v2 is deprecated.
-2026-06-17 17:02:53,762 - INFO - deep-belief-network is not compatible with tensorflow-2.0.2, change to tensorflow-2.0.1
-2026-06-17 17:02:53,762 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.1?...
-2026-06-17 17:03:09,982 - INFO - deep-belief-network is not compatible with tensorflow2.0.1-The tensorflow.python.ops.nn_ops.softmax_cross_entropy_with_logits_v2 is deprecated.
-2026-06-17 17:03:10,010 - INFO - deep-belief-network is not compatible with tensorflow-2.0.1, change to tensorflow-2.0.0
-2026-06-17 17:03:10,010 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.0?...
-2026-06-17 17:03:26,496 - INFO - deep-belief-network is not compatible with tensorflow2.0.0-The tensorflow.python.ops.nn_ops.softmax_cross_entropy_with_logits_v2 is deprecated.
-2026-06-17 17:03:26,516 - INFO - deep-belief-network is not compatible with tensorflow-2.0.0, change to tensorflow-1.15.5
-2026-06-17 17:03:26,516 - INFO - Checking deep-belief-network is compatible with tensorflow1.15.5?...
-2026-06-17 17:03:41,684 - INFO - deep-belief-network is compatible with tensorflow1.15.5
-2026-06-17 17:03:51,246 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:03:51,246 - INFO - Time cost: 126.21608757972717 s
+2026-07-27 10:50:19,700 - INFO - *************Upgrade tensorflow from 1.5.0 to 2.1.0 in deep-belief-network*************
+2026-07-27 10:50:19,700 - INFO - Checking deep-belief-network is compatible with tensorflow2.1.0?...
+2026-07-27 10:50:43,676 - INFO - deep-belief-network is not compatible with tensorflow2.1.0-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-07-27 10:50:43,717 - INFO - deep-belief-network is not compatible with tensorflow-2.1.0, change to tensorflow-2.0.4
+2026-07-27 10:50:43,717 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.4?...
+2026-07-27 10:51:06,454 - INFO - deep-belief-network is not compatible with tensorflow2.0.4-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-07-27 10:51:06,479 - INFO - deep-belief-network is not compatible with tensorflow-2.0.4, change to tensorflow-2.0.3
+2026-07-27 10:51:06,480 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.3?...
+2026-07-27 10:51:22,079 - INFO - deep-belief-network is not compatible with tensorflow2.0.3-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-07-27 10:51:22,097 - INFO - deep-belief-network is not compatible with tensorflow-2.0.3, change to tensorflow-2.0.2
+2026-07-27 10:51:22,098 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.2?...
+2026-07-27 10:51:37,820 - INFO - deep-belief-network is not compatible with tensorflow2.0.2-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-07-27 10:51:37,839 - INFO - deep-belief-network is not compatible with tensorflow-2.0.2, change to tensorflow-2.0.1
+2026-07-27 10:51:37,840 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.1?...
+2026-07-27 10:51:53,301 - INFO - deep-belief-network is not compatible with tensorflow2.0.1-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-07-27 10:51:53,322 - INFO - deep-belief-network is not compatible with tensorflow-2.0.1, change to tensorflow-2.0.0
+2026-07-27 10:51:53,322 - INFO - Checking deep-belief-network is compatible with tensorflow2.0.0?...
+2026-07-27 10:52:08,673 - INFO - deep-belief-network is not compatible with tensorflow2.0.0-The tensorflow.python.client.session.Session.__init__ is deprecated.
+2026-07-27 10:52:08,695 - INFO - deep-belief-network is not compatible with tensorflow-2.0.0, change to tensorflow-1.15.5
+2026-07-27 10:52:08,695 - INFO - Checking deep-belief-network is compatible with tensorflow1.15.5?...
+2026-07-27 10:52:23,013 - INFO - deep-belief-network is compatible with tensorflow1.15.5
+2026-07-27 10:52:25,721 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:52:25,721 - INFO - Time cost: 126.02315902709961 s

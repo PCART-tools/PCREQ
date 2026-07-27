@@ -1,5 +1,5 @@
-2026-06-17 17:28:05,865 - INFO - *************Upgrade tensorboardx from 1.6 to 2.3 in pt.darts*************
-2026-06-17 17:28:05,865 - INFO - Checking pt.darts is compatible with tensorboardx2.3?...
-2026-06-17 17:28:06,083 - INFO - pt.darts is compatible with tensorboardx2.3
-2026-06-17 17:28:09,478 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:28:09,478 - INFO - Time cost: 3.61513090133667 s
+2026-07-27 11:01:06,719 - INFO - *************Upgrade tensorboardx from 1.6 to 2.3 in pt.darts*************
+2026-07-27 11:01:06,719 - INFO - Checking pt.darts is compatible with tensorboardx2.3?...
+2026-07-27 11:01:07,388 - INFO - pt.darts is compatible with tensorboardx2.3
+2026-07-27 11:01:11,495 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 11:01:11,496 - INFO - Time cost: 4.826263427734375 s

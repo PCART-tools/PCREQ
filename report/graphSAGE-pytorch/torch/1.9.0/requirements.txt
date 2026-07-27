@@ -1,4 +1,5 @@
 certifi==2021.5.30
+dataclasses==0.8
 numpy==1.16.2
 pillow==8.3.2
 pyhocon==0.3.51

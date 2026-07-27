@@ -1,6 +1,7 @@
 import ast
 import logging
 import os
+import tempfile
 from subprocess import run
 
 from .graph_model import (Group, Node, Call, Variable,
@@ -574,26 +575,29 @@ class Python(object):
             return tree
 
         def process_refactor_get_tree(filename):
-            to_3_prefix = r"python refactor.py -w -n --no-diffs --add-suffix=3"
+            """Run 2to3 refactor, writing output to a temp directory.
+
+            The KB source directory may be read-only (e.g. /dataset/lei/).
+            Using ``-o tmpdir`` avoids Permission denied when 2to3 tries
+            to write ``.py3`` back to the source tree.
+            """
+            refactor_py = os.path.join("utils", "refactor.py")
             py2_py = filename
             assert os.path.exists(py2_py)
-            refactor_py = os.path.join("utils", "refactor.py")
-            order_list = ["python", refactor_py, "-w", "-n", "--no-diffs", "--add-suffix=3"]
-            order_list.append(py2_py)
-            py3_py = py2_py + "3"
 
-            try:
-                run(order_list)
-                assert os.path.exists(py3_py)
-                tree = get_tree_with_feature_version(py3_py, feature_version=(3, 4))
-                os.remove(py3_py)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                order_list = ["python", refactor_py, "-w", "-n",
+                               "--no-diffs", "--add-suffix=3",
+                               "-o", tmpdir, py2_py]
+                run(order_list, capture_output=True)
+                converted = os.path.join(
+                    tmpdir, os.path.basename(py2_py) + "3")
+                if not os.path.exists(converted):
+                    raise SyntaxError(
+                        "2to3 failed to convert %s" % filename)
+                tree = get_tree_with_feature_version(
+                    converted, feature_version=(3, 4))
                 return tree
-            except AssertionError as ae:
-                raise SyntaxError
-            except SyntaxError as se:
-                if os.path.exists(py3_py):
-                    os.remove(py3_py)
-                raise SyntaxError
 
         try:
             tree = get_tree_with_feature_version(filename, feature_version=(3, 8))

@@ -1,7 +1,7 @@
-2026-06-17 16:38:14,543 - INFO - *************Upgrade torch from 1.1.0 to 1.9.1 in PyTorch-ENet*************
-2026-06-17 16:38:14,544 - INFO - Checking PyTorch-ENet is compatible with torch1.9.1?...
-2026-06-17 16:38:17,861 - INFO - PyTorch-ENet is compatible with torch1.9.1
-2026-06-17 16:38:21,182 - INFO - Checking torchvision0.3.0 is compatible with torch1.9.1?...
-2026-06-17 16:38:21,376 - INFO - torchvision0.3.0 is compatible with torch1.9.1
-2026-06-17 16:38:26,952 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:38:26,952 - INFO - Time cost: 12.412574291229248 s
+2026-07-27 10:25:53,273 - INFO - *************Upgrade torch from 1.1.0 to 1.9.1 in PyTorch-ENet*************
+2026-07-27 10:25:53,274 - INFO - Checking PyTorch-ENet is compatible with torch1.9.1?...
+2026-07-27 10:25:56,387 - INFO - PyTorch-ENet is compatible with torch1.9.1
+2026-07-27 10:25:59,886 - INFO - Checking torchvision0.3.0 is compatible with torch1.9.1?...
+2026-07-27 10:26:00,181 - INFO - torchvision0.3.0 is compatible with torch1.9.1
+2026-07-27 10:26:11,404 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:26:11,404 - INFO - Time cost: 18.13406491279602 s

@@ -1,7 +1,7 @@
-2026-06-17 17:28:15,465 - INFO - *************Upgrade numpy from 1.15.0 to 1.18.1 in pytorch-hed*************
-2026-06-17 17:28:15,466 - INFO - Checking pytorch-hed is compatible with numpy1.18.1?...
-2026-06-17 17:28:27,389 - INFO - pytorch-hed is compatible with numpy1.18.1
-2026-06-17 17:28:27,523 - INFO - Checking torch1.7.0 is compatible with numpy1.18.1?...
-2026-06-17 17:28:40,129 - INFO - torch1.7.0 is compatible with numpy1.18.1
-2026-06-17 17:28:43,393 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:28:43,393 - INFO - Time cost: 27.92996835708618 s
+2026-07-27 11:01:18,262 - INFO - *************Upgrade numpy from 1.15.0 to 1.18.1 in pytorch-hed*************
+2026-07-27 11:01:18,262 - INFO - Checking pytorch-hed is compatible with numpy1.18.1?...
+2026-07-27 11:01:31,785 - INFO - pytorch-hed is compatible with numpy1.18.1
+2026-07-27 11:01:31,921 - INFO - Checking torch1.7.0 is compatible with numpy1.18.1?...
+2026-07-27 11:01:45,091 - INFO - torch1.7.0 is compatible with numpy1.18.1
+2026-07-27 11:01:48,321 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 11:01:48,321 - INFO - Time cost: 30.06231689453125 s

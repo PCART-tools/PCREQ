@@ -3,7 +3,7 @@ from extraction.lib_module_and_package_extraction import get_python_modules_and_
 from extraction.getCall import get_all_used_api
 from call_graph.engine import main as cfmain
 from .library_version_change import get_version_change
-from utils.util import extract_function_defs_from_file, extract_classes_from_file, get_library_call_module, shortenPath
+from utils.util import extract_function_defs_from_file, extract_classes_from_file, get_library_call_module, shortenPath, resolve_pkg_dir, rename_core_keys, detect_call_modules
 from extraction.library_api_and_module import extract_from_directory
 from extraction.get_attribute_from_proj import get_attributes_from_file
 from call_graph.get_FDG import get_FDG_from_requirements
@@ -225,7 +225,7 @@ def get_all_related_py_files(py_file):
     return res
 
 def get_py_files_to_examine(api_to_examine, target_project, target_proj_dependency):
-    py_files_to_examine = set()
+    py_files_to_examine = []
     #print(api_to_examine)
     for api in api_to_examine:
         if api.endswith("__init__") or api.endswith("__default_init__"):
@@ -235,9 +235,11 @@ def get_py_files_to_examine(api_to_examine, target_project, target_proj_dependen
             i = 0
             for j in reversed(tmp):
                 if i == 0:
-                    py_files_to_examine.add(library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py")
+                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py"
                 else:
-                    py_files_to_examine.add(library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py")
+                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py"
+                if _path not in py_files_to_examine:
+                    py_files_to_examine.append(_path)
                 i = i + 1
             #py_files_to_examine.add(tmp)
         else:
@@ -245,20 +247,21 @@ def get_py_files_to_examine(api_to_examine, target_project, target_proj_dependen
             i = 0
             for j in reversed(tmp):
                 if i == 0:
-                    py_files_to_examine.add(library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py")
+                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py"
                 else:
-                    py_files_to_examine.add(library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py")
+                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py"
+                if _path not in py_files_to_examine:
+                    py_files_to_examine.append(_path)
                 i = i + 1
-            
+
     new_py_files_to_examine = py_files_to_examine.copy()
-    new_py_files_to_examine = list(new_py_files_to_examine)
     for py_file in new_py_files_to_examine:
         res = get_all_related_py_files(py_file)
         for r in res:
             if r not in new_py_files_to_examine:
                 new_py_files_to_examine.append(r)
 
-    py_files_to_examine = set(new_py_files_to_examine)
+    py_files_to_examine = list(dict.fromkeys(new_py_files_to_examine))
     return py_files_to_examine
 
 def extract_inner_parentheses(s):
@@ -359,7 +362,6 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                     partc = [start_library_path, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + ".json", "--entry-functions", ls]
                 else:
                     split_path = start_library_path.split('/')
-                    print(split_path)
 
                     # 去除最后两个部分
                     result = '/'.join(split_path[:-2])
@@ -509,32 +511,66 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
     #logging.info(f"**{apis_full_name}******************")
     return apis_full_name, api_to_examine
 
+def _is_stub_json(path):
+    """Return True if JSON file is an empty stub (<200 bytes, no real data)."""
+    try:
+        if os.path.getsize(path) >= 200:
+            return False
+        with open(path) as f:
+            data = json.load(f)
+        return not any(data.get(k) for k in ('functions', 'classes', 'methods'))
+    except Exception:
+        return True
+
+
 def get_all_library_info(library_path, library_call_module, version, lib):
-    json_file_path = f"{api_path_prefix}{lib}/{version}.json"
-    if not os.path.exists(f"{api_path_prefix}{lib}"):
-        os.makedirs(f"{api_path_prefix}{lib}")
+    norm_lib = resolve_pkg_dir(lib, api_path_prefix)
+    json_file_path = f"{api_path_prefix}{norm_lib}/{version}.json"
+    # P60: try old naming fallback for rc versions (0.8.0rc4 → 0.8.0.rc4)
+    if not os.path.exists(json_file_path) or _is_stub_json(json_file_path):
+        if 'rc' in version and '.rc' not in version:
+            _alt = f"{api_path_prefix}{norm_lib}/{version.replace('rc', '.rc')}.json"
+            if os.path.exists(_alt) and not _is_stub_json(_alt):
+                json_file_path = _alt
+    if not os.path.exists(f"{api_path_prefix}{norm_lib}"):
+        os.makedirs(f"{api_path_prefix}{norm_lib}", exist_ok=True)
     if not os.path.exists(json_file_path):
-        res = extract_from_directory(library_path)
-        dir = get_python_modules_and_packages_from_dir(library_path, library_call_module)
-        init_dir = get_python_modules_and_packages_from_init(library_path, library_call_module)
+        # P64: if library_path does not exist, auto-detect call_module
+        _extract_path = library_path
+        _actual_call_module = library_call_module
+        if not os.path.exists(_extract_path):
+            _version_root = _extract_path.rsplit('/', 1)[0]
+            _detected = detect_call_modules(_version_root, lib)
+            if _detected:
+                _extract_path = os.path.join(_version_root, _detected[0])
+                _actual_call_module = _detected[0]
+        res = extract_from_directory(_extract_path)
+        dir = get_python_modules_and_packages_from_dir(_extract_path, _actual_call_module)
+        init_dir = get_python_modules_and_packages_from_init(_extract_path, _actual_call_module)
         dir.update(init_dir)
         res["modules"] = list(dir)
-        api_usage_in_target_library, _1, __2, _3  = get_all_used_api(library_path, library_call_module)
+        api_usage_in_target_library, _1, __2, _3  = get_all_used_api(_extract_path, _actual_call_module)
         res["api_usage"] = list(api_usage_in_target_library)
         funcs = res["functions"]
-        new_funcs = shortenPath(funcs, lib, version)
-        res["functions"] = new_funcs
         classes = res["classes"]
-        new_classes = shortenPath(classes, lib, version)
+        if _actual_call_module.endswith('_core'):
+            funcs = rename_core_keys(funcs, _actual_call_module)
+            classes = rename_core_keys(classes, _actual_call_module)
+        new_funcs = shortenPath(funcs, lib, version, library_path_prefix, source_module=_actual_call_module)
+        new_classes = shortenPath(classes, lib, version, library_path_prefix, source_module=_actual_call_module)
+        if _actual_call_module.endswith('_core'):
+            new_funcs = rename_core_keys(new_funcs, _actual_call_module)
+            new_classes = rename_core_keys(new_classes, _actual_call_module)
+        res["functions"] = new_funcs
         res["classes"] = new_classes
-        with open(json_file_path, "w") as f:
-            json.dump(res, f)
+        _write_json(json_file_path, res)
     with open(json_file_path, "r") as f:
         res = json.load(f)
     return res
 
 def is_target_library_code_conflict(proj_path, target_project, target_library, start_version, target_version, start_library_path, target_library_path, target_library_call_module, proj, path, target_proj_dependency, python_version):
     res = False
+    source_root = target_library_path[:target_library_path.rfind('/')]
     if target_project == proj:
         logging.info(f"Checking {target_project} is compatible with {target_library}{target_version}?...")
     else:
@@ -544,7 +580,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
     #这里需要修改，目前最多考虑了两次调用例如proj-torchvision-torch。实际上可能有更多多层次调用（proj-A-B-torchvision-torch）。已修改2024-11-27
     s, api_calls_dict, api_file_map, api_paras_map = get_all_used_api(proj_path, target_library_call_module) 
     #print(s)
-    s = list(set(s))
+    s = list(dict.fromkeys(s))  # deduplicate while preserving insertion order
     api_short_to_full_mapping = {}
     api_full_to_short_mapping = {}
 
@@ -637,7 +673,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 continue
             # 解决误报的问题，可以查找import中是否有定义
             flag = 0
-            api_path = target_library_path + slash + transform_and_remove_last_segment(module.replace(target_library_call_module+'.', '')) + '.py'
+            api_path = source_root + slash + transform_and_remove_last_segment(module) + '.py'
             if os.path.exists(api_path):
                 import_api_names = paths_of_import_file(api_path)
                 api_last_name = module.split(".")[-1]
@@ -660,7 +696,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
             #解决sklearn.metrics.regression.mean_squared_error找不到的问题
             flag = 0
             if "." in new_module:
-                init_path = target_library_path + slash + transform_and_remove_last_segment(new_module) + slash + '__init__.py'
+                init_path = source_root + slash + transform_and_remove_last_segment(module) + slash + '__init__.py'
                 #print(init_path)
                 if os.path.exists(init_path):
                     xxx = paths_of_import_file(init_path)
@@ -712,9 +748,9 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 continue
             # 解决误报的问题，可以查找import中是否有定义
             flag = 0
-            api_path = target_library_path + slash + transform_and_remove_last_segment(module.replace(target_library_call_module+'.', '')) + '.py'
-            if os.path.exists(api_path):
-                import_api_names = paths_of_import_file(api_path)
+            api_path2 = source_root + slash + transform_and_remove_last_segment(module) + '.py'
+            if os.path.exists(api_path2):
+                import_api_names = paths_of_import_file(api_path2)
                 api_last_name = module.split(".")[-1]
                 for x in import_api_names:
                     if x.endswith(api_last_name):
@@ -796,7 +832,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 flag = 0
                 for i in target_api_dict["classes"].keys():
                     if api_last_name in i[0]:
-                        target_class_decorator_path = target_library_path + slash + transform_and_remove_last_segment(i[0]) + '.py'
+                        target_class_decorator_path = source_root + slash + transform_and_remove_last_segment(i[0]) + '.py'
                         if not isinstance(target_api_dict['classes'][f"{target_library_call_module}.{class_api}"], str):
                             target_class_decorator = extract_lines(target_class_decorator_path, target_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"]-1)
                         else:
@@ -845,7 +881,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 # 解决误报的问题，可以查找import中是否有定义
                 #解决_tqdm_notebook
                 flag = 0
-                api_path = target_library_path + slash + transform_and_remove_last_segment(class_api) + '.py'
+                api_path = source_root + slash + transform_and_remove_last_segment(class_api) + '.py'
                 if os.path.exists(api_path):
                     import_api_names = paths_of_import_file(api_path)
                     class_api_last_name = class_api.split(".")[-1]
@@ -934,11 +970,8 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 api_last_name = new_api.split(".")[-1]
                 flag = 0
                 for i in target_api_dict["functions"].items():
-                    #new_i = i[0].replace(target_library_call_module+'.', '')
-                    parts = i[0].split(".")
-                    new_i = '.'.join(parts[1:])
                     if i[0].endswith(f".{api_last_name}"):
-                        target_functions_decorator_path = target_library_path + slash + transform_and_remove_last_segment(new_i) + '.py'
+                        target_functions_decorator_path = source_root + slash + transform_and_remove_last_segment(i[0]) + '.py'
                         if not isinstance(target_api_dict['functions'][i[0]], str):
                             target_functions_decorator = extract_lines(target_functions_decorator_path, target_api_dict['functions'][i[0]]["lineno"]-1)
                         else:
@@ -1055,7 +1088,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 # 解决误报的问题，可以查找import中是否有定义
                 #解决_tqdm_notebook
                 flag = 0            
-                api_path = target_library_path + slash + transform_and_remove_last_segment(new_api) + '.py'
+                api_path = source_root + slash + transform_and_remove_last_segment(new_api) + '.py'
                 if os.path.exists(api_path):
                     import_api_names = paths_of_import_file(api_path)
                     for x in import_api_names:

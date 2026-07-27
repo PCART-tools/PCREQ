@@ -1,5 +1,5 @@
-2026-06-17 16:35:06,225 - INFO - *************Upgrade tqdm from 4.61.1 to 4.64.1 in GLCIC-PyTorch*************
-2026-06-17 16:35:06,225 - INFO - Checking GLCIC-PyTorch is compatible with tqdm4.64.1?...
-2026-06-17 16:35:06,495 - INFO - GLCIC-PyTorch is compatible with tqdm4.64.1
-2026-06-17 16:35:06,758 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:35:06,758 - INFO - Time cost: 0.5364737510681152 s
+2026-07-27 10:22:07,780 - INFO - *************Upgrade tqdm from 4.61.1 to 4.64.1 in GLCIC-PyTorch*************
+2026-07-27 10:22:07,781 - INFO - Checking GLCIC-PyTorch is compatible with tqdm4.64.1?...
+2026-07-27 10:22:08,032 - INFO - GLCIC-PyTorch is compatible with tqdm4.64.1
+2026-07-27 10:22:08,228 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:22:08,228 - INFO - Time cost: 0.45117640495300293 s

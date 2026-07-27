@@ -1,7 +1,7 @@
-2026-06-17 17:25:16,243 - INFO - *************Upgrade numpy from 1.16.2 to 1.19.2 in graphSAGE-pytorch*************
-2026-06-17 17:25:16,243 - INFO - Checking graphSAGE-pytorch is compatible with numpy1.19.2?...
-2026-06-17 17:25:27,350 - INFO - graphSAGE-pytorch is compatible with numpy1.19.2
-2026-06-17 17:25:28,263 - INFO - Checking scikit-learn0.20.3 is compatible with numpy1.19.2?...
-2026-06-17 17:25:36,861 - INFO - scikit-learn0.20.3 is compatible with numpy1.19.2
-2026-06-17 17:25:39,395 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:25:39,395 - INFO - Time cost: 23.15424084663391 s
+2026-07-27 10:57:10,022 - INFO - *************Upgrade numpy from 1.16.2 to 1.19.2 in graphSAGE-pytorch*************
+2026-07-27 10:57:10,022 - INFO - Checking graphSAGE-pytorch is compatible with numpy1.19.2?...
+2026-07-27 10:57:21,061 - INFO - graphSAGE-pytorch is compatible with numpy1.19.2
+2026-07-27 10:57:21,791 - INFO - Checking scikit-learn0.20.3 is compatible with numpy1.19.2?...
+2026-07-27 10:57:30,790 - INFO - scikit-learn0.20.3 is compatible with numpy1.19.2
+2026-07-27 10:57:33,263 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:57:33,264 - INFO - Time cost: 23.243349075317383 s

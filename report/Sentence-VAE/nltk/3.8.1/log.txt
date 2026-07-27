@@ -1,5 +1,5 @@
-2026-06-17 16:40:45,143 - INFO - *************Upgrade nltk from 3.6.5 to 3.8.1 in Sentence-VAE*************
-2026-06-17 16:40:45,143 - INFO - Checking Sentence-VAE is compatible with nltk3.8.1?...
-2026-06-17 16:40:49,957 - INFO - Sentence-VAE is compatible with nltk3.8.1
-2026-06-17 16:40:52,018 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:40:52,018 - INFO - Time cost: 6.8768064975738525 s
+2026-07-27 10:28:31,744 - INFO - *************Upgrade nltk from 3.6.5 to 3.8.1 in Sentence-VAE*************
+2026-07-27 10:28:31,746 - INFO - Checking Sentence-VAE is compatible with nltk3.8.1?...
+2026-07-27 10:28:37,863 - INFO - Sentence-VAE is compatible with nltk3.8.1
+2026-07-27 10:28:43,211 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:28:43,211 - INFO - Time cost: 11.472594022750854 s

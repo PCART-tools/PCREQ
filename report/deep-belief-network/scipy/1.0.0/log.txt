@@ -1,7 +1,7 @@
-2026-06-17 17:01:25,659 - INFO - *************Upgrade scipy from 0.18.1 to 1.0.0 in deep-belief-network*************
-2026-06-17 17:01:25,659 - INFO - Checking deep-belief-network is compatible with scipy1.0.0?...
-2026-06-17 17:01:47,118 - INFO - deep-belief-network is compatible with scipy1.0.0
-2026-06-17 17:01:51,210 - INFO - Checking scikit-learn0.18.1 is compatible with scipy1.0.0?...
-2026-06-17 17:02:13,365 - INFO - scikit-learn0.18.1 is compatible with scipy1.0.0
-2026-06-17 17:02:22,121 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 17:02:22,122 - INFO - Time cost: 56.465559005737305 s
+2026-07-27 10:49:29,263 - INFO - *************Upgrade scipy from 0.18.1 to 1.0.0 in deep-belief-network*************
+2026-07-27 10:49:29,263 - INFO - Checking deep-belief-network is compatible with scipy1.0.0?...
+2026-07-27 10:49:44,183 - INFO - deep-belief-network is compatible with scipy1.0.0
+2026-07-27 10:49:46,609 - INFO - Checking scikit-learn0.18.1 is compatible with scipy1.0.0?...
+2026-07-27 10:50:01,273 - INFO - scikit-learn0.18.1 is compatible with scipy1.0.0
+2026-07-27 10:50:15,921 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:50:15,924 - INFO - Time cost: 46.73594522476196 s

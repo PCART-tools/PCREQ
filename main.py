@@ -57,8 +57,12 @@ def upgrade_with_conflict_handling(config, target_project, target_library, targe
         version_ls = json.load(file)
     candidate_versions = version_ls[target_library][python_version]
 
+    def _is_prerelease(v):
+        return any(t in v.lower() for t in ('rc', 'dev', 'alpha', 'beta'))
+
     filtered_versions = [v for v in reversed(candidate_versions)
-                         if compare_version(v, config['startVersion']) and not compare_version(v, target_version) and v != target_version]
+                         if compare_version(v, config['startVersion']) and not compare_version(v, target_version) and v != target_version
+                         and not _is_prerelease(v)]
     filtered_versions.append(config['startVersion'])
 
     for version in filtered_versions:
@@ -85,7 +89,7 @@ def finalize_and_save_requirements(target_proj_dependency, sub_graph, compatibil
     clean_deps = remove_invalid_versions(target_proj_dependency)
     #print(target_proj_dependency)
     tmp = get_new_lib(clean_deps, python_version)
-    all_packages = set(sub_graph) | set(tmp)
+    all_packages = list(dict.fromkeys(list(sub_graph.keys()) + list(tmp)))
     end_available_versions = {}
     for pkg in all_packages:
         if pkg in clean_deps:

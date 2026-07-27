@@ -3,7 +3,6 @@ botocore==1.33.13
 certifi==2017.4.17
 charset-normalizer==3.3.2
 click==8.1.7
-colorama==0.4.6
 dataclasses==0.6
 flask==1.1.1
 flask-cors==3.0.8

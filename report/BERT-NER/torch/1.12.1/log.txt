@@ -1,5 +1,5 @@
-2026-06-17 16:23:54,922 - INFO - *************Upgrade torch from 1.2.0 to 1.12.1 in BERT-NER*************
-2026-06-17 16:23:54,922 - INFO - Checking BERT-NER is compatible with torch1.12.1?...
-2026-06-17 16:23:56,758 - INFO - BERT-NER is compatible with torch1.12.1
-2026-06-17 16:24:26,781 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:24:26,781 - INFO - Time cost: 31.861462593078613 s
+2026-07-27 10:10:06,255 - INFO - *************Upgrade torch from 1.2.0 to 1.12.1 in BERT-NER*************
+2026-07-27 10:10:06,255 - INFO - Checking BERT-NER is compatible with torch1.12.1?...
+2026-07-27 10:10:09,316 - INFO - BERT-NER is compatible with torch1.12.1
+2026-07-27 10:10:29,824 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:10:29,824 - INFO - Time cost: 23.5704984664917 s

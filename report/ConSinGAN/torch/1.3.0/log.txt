@@ -1,9 +1,7 @@
-2026-06-17 16:31:06,082 - INFO - *************Upgrade torch from 1.1.0 to 1.3.0 in ConSinGAN*************
-2026-06-17 16:31:06,082 - INFO - Checking ConSinGAN is compatible with torch1.3.0?...
-2026-06-17 16:31:07,444 - INFO - ConSinGAN is compatible with torch1.3.0
-2026-06-17 16:31:13,583 - INFO - Checking ConSinGAN is compatible with scikit-learn0.22.1?...
-2026-06-17 16:31:13,584 - INFO - ConSinGAN is compatible with scikit-learn0.22.1
-2026-06-17 16:31:13,594 - INFO - Checking torchvision0.2.2 is compatible with torch1.3.0?...
-2026-06-17 16:31:13,621 - INFO - torchvision0.2.2 is compatible with torch1.3.0
-2026-06-17 16:31:14,319 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:31:14,319 - INFO - Time cost: 8.238490343093872 s
+2026-07-27 10:17:37,953 - INFO - *************Upgrade torch from 1.1.0 to 1.3.0 in ConSinGAN*************
+2026-07-27 10:17:37,953 - INFO - Checking ConSinGAN is compatible with torch1.3.0?...
+2026-07-27 10:17:39,908 - INFO - ConSinGAN is compatible with torch1.3.0
+2026-07-27 10:17:48,240 - INFO - Checking torchvision0.2.2 is compatible with torch1.3.0?...
+2026-07-27 10:17:48,297 - INFO - torchvision0.2.2 is compatible with torch1.3.0
+2026-07-27 10:17:49,435 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:17:49,435 - INFO - Time cost: 11.496556997299194 s

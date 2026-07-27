@@ -1,7 +1,7 @@
-2026-06-17 16:31:16,113 - INFO - *************Upgrade pillow from 6.0.0 to 8.4.0 in Deep-SAD-PyTorch*************
-2026-06-17 16:31:16,114 - INFO - Checking Deep-SAD-PyTorch is compatible with pillow8.4.0?...
-2026-06-17 16:31:16,315 - INFO - Deep-SAD-PyTorch is compatible with pillow8.4.0
-2026-06-17 16:31:22,553 - INFO - Checking torchvision0.3.0 is compatible with pillow8.4.0?...
-2026-06-17 16:31:22,865 - INFO - torchvision0.3.0 is compatible with pillow8.4.0
-2026-06-17 16:31:23,834 - INFO - *************New requirements.txt has been generated!*************
-2026-06-17 16:31:23,834 - INFO - Time cost: 7.724512338638306 s
+2026-07-27 10:18:00,725 - INFO - *************Upgrade pillow from 6.0.0 to 8.4.0 in Deep-SAD-PyTorch*************
+2026-07-27 10:18:00,727 - INFO - Checking Deep-SAD-PyTorch is compatible with pillow8.4.0?...
+2026-07-27 10:18:00,908 - INFO - Deep-SAD-PyTorch is compatible with pillow8.4.0
+2026-07-27 10:18:07,266 - INFO - Checking torchvision0.3.0 is compatible with pillow8.4.0?...
+2026-07-27 10:18:07,329 - INFO - torchvision0.3.0 is compatible with pillow8.4.0
+2026-07-27 10:18:08,426 - INFO - *************New requirements.txt has been generated!*************
+2026-07-27 10:18:08,426 - INFO - Time cost: 7.702765941619873 s
