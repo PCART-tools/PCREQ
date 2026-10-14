@@ -1,14 +1,39 @@
-from code_compat.target_library_conflict import *
-from code_compat.non_target_library_conflict import *
-from call_graph.get_FDG import * 
-from extraction.get_attribute_from_proj import *
-from extraction.import_to_path import *
+import argparse
+import json
+import logging
+import os
+import platform
+import time
+
+import requests
+
+from call_graph.get_FDG import get_FDG_from_requirements, get_sub_graph, setup_path_1
+from code_compat.non_target_library_conflict import setup_path_3
+from code_compat.target_library_conflict import (
+    is_target_library_code_conflict,
+    setup_path_2,
+)
 from extraction.getCall import get_all_used_api
+from utils.util import (
+    compare_version,
+    get_library_call_module,
+    get_library_paths,
+    get_proj_dependency_from_requirements,
+    load_config,
+    remove_invalid_versions,
+    save_dict_to_file,
+    setup_logging,
+    update_project_dependencies,
+)
+from ver_change.version_change import resolve_conflict, setup_path_5
 from ver_compat.constraint_solver import solving_constraints
-from ver_compat.get_ver_and_constraint import *
-from ver_change.version_change import *
-from utils.util import * 
-import platform, argparse, os, json, time, requests, logging
+from ver_compat.get_ver_and_constraint import (
+    get_available_version,
+    get_compatibility_dict,
+    get_new_lib,
+    remove_redundant_dependencies,
+    setup_path_4,
+)
 
 
 if (platform.system() == 'Windows'):

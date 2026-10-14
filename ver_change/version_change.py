@@ -1,9 +1,16 @@
-from utils.util import *
-from code_compat.target_library_conflict import *
-from code_compat.non_target_library_conflict import *
-from utils.util import *
-from ver_compat.get_ver_and_constraint import *
+import platform
+
+from code_compat.non_target_library_conflict import (
+    get_libraries_depending_on_targetlibrary,
+    is_non_target_library_code_conflict,
+    update_compatibility_info,
+)
+from utils.util import compare_version, get_library_call_module, resolve_pkg_dir
 from ver_compat.constraint_solver import solving_constraints
+from ver_compat.get_ver_and_constraint import (
+    get_available_version,
+    get_compatibility_dict,
+)
 
 if (platform.system() == 'Windows'):
     slash = "\\"

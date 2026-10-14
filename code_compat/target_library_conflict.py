@@ -3,7 +3,7 @@ from extraction.lib_module_and_package_extraction import get_python_modules_and_
 from extraction.getCall import get_all_used_api
 from call_graph.engine import main as cfmain
 from .library_version_change import get_version_change
-from utils.util import extract_function_defs_from_file, extract_classes_from_file, get_library_call_module, shortenPath, resolve_pkg_dir, rename_core_keys, detect_call_modules
+from utils.util import extract_function_defs_from_file, extract_classes_from_file, get_library_call_module, shortenPath, resolve_pkg_dir, rename_core_keys, detect_call_modules, transform_and_remove_last_segment
 from extraction.library_api_and_module import extract_from_directory
 from extraction.get_attribute_from_proj import get_attributes_from_file
 from call_graph.get_FDG import get_FDG_from_requirements
@@ -46,17 +46,6 @@ def setup_path_2(library_path_prefix_pass, constraint_path_prefix_pass, version_
     constraint_path_prefix = constraint_path_prefix_pass
     version_path_prefix = version_path_prefix_pass
     api_path_prefix = api_path_prefix_pass
-
-def transform_and_remove_last_segment(input_str):
-    # 将点号替换为斜杠
-    transformed_str = input_str.replace('.', '/')
-    
-    # 移除最后一个斜杠及其后面的所有内容
-    last_slash_index = transformed_str.rfind('/')
-    if last_slash_index != -1:
-        transformed_str = transformed_str[:last_slash_index]
-    
-    return transformed_str
 
 def remove_last_segment(input_str):
     # 移除最后一个斜杠及其后面的所有内容

@@ -3,6 +3,7 @@ import logging
 import os
 import tempfile
 from subprocess import run
+from utils.util import get_tree_with_feature_version
 
 from .graph_model import (Group, Node, Call, Variable,
                     ImportItem, create_fake_node,create_fake_group,
@@ -525,55 +526,6 @@ class Python(object):
 
     @staticmethod
     def get_tree(filename,_):
-        def get_tree_with_feature_version(filename, feature_version=None):
-            try:
-                with open(filename) as f:
-                    raw = f.read()
-            except ValueError:
-                with open(filename, encoding='UTF-8', errors='ignore') as f:
-                    raw = f.read()
-            if feature_version == None:
-                tree = ast.parse(raw)
-            else:
-                tree = ast.parse(raw, feature_version=feature_version)
-            return tree
-
-        def process_refactor_get_tree(filename):
-            refactor_py = os.path.join("utils", "refactor.py")
-            to_3_prefix = r"python " + refactor_py + " -w -n --no-diffs --add-suffix=3"
-            py2_py = filename
-            assert os.path.exists(py2_py)
-            order_list = ["python", refactor_py, "-w", "-n", "--no-diffs", "--add-suffix=3"]
-            order_list.append(py2_py)
-            py3_py = py2_py + "3"
-
-
-            try:
-                run(order_list)
-                assert os.path.exists(py3_py)
-                tree = get_tree_with_feature_version(py3_py, feature_version=(3, 4))
-                os.remove(py3_py)
-                return tree
-            except AssertionError as ae:
-                raise SyntaxError
-            except SyntaxError as se:
-                if os.path.exists(py3_py):
-                    os.remove(py3_py)
-                raise SyntaxError
-
-        def get_tree_with_feature_version(filename, feature_version=None):
-            try:
-                with open(filename) as f:
-                    raw = f.read()
-            except ValueError:
-                with open(filename, encoding='UTF-8', errors='ignore') as f:
-                    raw = f.read()
-            if feature_version == None:
-                tree = ast.parse(raw)
-            else:
-                tree = ast.parse(raw, feature_version=feature_version)
-            return tree
-
         def process_refactor_get_tree(filename):
             """Run 2to3 refactor, writing output to a temp directory.
 

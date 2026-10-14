@@ -1,6 +1,7 @@
 import os
 import ast
 from subprocess import run
+from utils.util import split_packname_and_cons, get_tree_with_feature_version
 
 def to_skip_line(line):
     if line.startswith(r'#') or len(line) == 0:
@@ -24,25 +25,6 @@ def delete_whitespace_and_comments(line):
     line = line.replace(' ', '')
     return line
 
-
-def split_packname_and_cons(line):
-    version_ops = [r'<', r'<=', r'!=', r'==', r'>=', r'>', r'~=', r'===']
-    min_op_idx = None
-    for op in version_ops:
-        if line.find(op) != -1:
-            if min_op_idx == None:
-                min_op_idx = line.find(op)
-            else:
-                min_op_idx = min(min_op_idx, line.find(op))
-    res = []
-    if min_op_idx != None:
-        res.append(line[:min_op_idx])
-        res.append(line[min_op_idx:])
-    else:
-        res.append(line)
-    for i in range(len(res)):
-        res[i]=res[i].replace(" ","")
-    return res
 
 
 def read_txt(txt_path):
@@ -85,69 +67,6 @@ def get_packname_and_cons(txt_path):
 
 
 def get_tree(filename):
-    def get_tree_with_feature_version(filename, feature_version=None):
-        """
-        Get the entire AST for this file
-
-        :param filename str:
-        :rtype: ast
-        """
-        try:
-            with open(filename) as f:
-                raw = f.read()
-        except ValueError:
-            with open(filename, encoding='UTF-8', errors='ignore') as f:
-                raw = f.read()
-        if feature_version == None:
-            tree = ast.parse(raw)
-        else:
-            tree = ast.parse(raw, feature_version=feature_version)
-        return tree
-
-    def process_refactor_get_tree(filename):
-        refactor_py = os.path.join("utils", "refactor.py")
-        to_3_prefix = r"python " + refactor_py + " -w -n --no-diffs --add-suffix=3"
-        py2_py = filename
-        assert os.path.exists(py2_py)
-        order_list = ["python", refactor_py, "-w", "-n", "--no-diffs", "--add-suffix=3"]
-        order_list.append(py2_py)
-        py3_py = py2_py + "3"
-
-
-        try:
-
-            run(order_list)
-            assert os.path.exists(py3_py)
-            tree = get_tree_with_feature_version(py3_py, feature_version=(3, 4))
-            os.remove(py3_py)
-            return tree
-        except AssertionError as ae:
-            print("Could not change %r to python3 (%r) Skipping...", filename, ae)
-            raise SyntaxError
-        except SyntaxError as se:
-            if os.path.exists(py3_py):
-                os.remove(py3_py)
-            raise SyntaxError
-
-    def get_tree_with_feature_version(filename, feature_version=None):
-        """
-        Get the entire AST for this file
-
-        :param filename str:
-        :rtype: ast
-        """
-        try:
-            with open(filename) as f:
-                raw = f.read()
-        except ValueError:
-            with open(filename, encoding='UTF-8', errors='ignore') as f:
-                raw = f.read()
-        if feature_version == None:
-            tree = ast.parse(raw)
-        else:
-            tree = ast.parse(raw, feature_version=feature_version)
-        return tree
-
     def process_refactor_get_tree(filename):
         to_3_prefix = r"python refactor.py -w -n --no-diffs --add-suffix=3"
         py2_py = filename

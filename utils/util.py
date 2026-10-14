@@ -3,7 +3,6 @@ from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 from packaging import version
 from queue import Queue
-from extraction.import_to_path import get_paths_of_import, paths_of_import_file
 
 if (platform.system() == 'Windows'):
     slash = "\\"
@@ -44,6 +43,26 @@ def norm_ver(ver):
             return str(version.parse(ver))
         except Exception:
             return ver
+
+
+def get_tree_with_feature_version(filename, feature_version=None):
+    """
+        Get the entire AST for this file
+
+        :param filename str:
+        :rtype: ast
+        """
+    try:
+        with open(filename) as f:
+            raw = f.read()
+    except ValueError:
+        with open(filename, encoding='UTF-8', errors='ignore') as f:
+            raw = f.read()
+    if feature_version == None:
+        tree = ast.parse(raw)
+    else:
+        tree = ast.parse(raw, feature_version=feature_version)
+    return tree
 
 
 def get_path_by_extension(root_dir, flag='.py'):
@@ -515,6 +534,26 @@ def save_dict_to_file(d, filename='output.txt'):
     # 将格式化后的内容写入文件
     with open(filename, 'w') as file:
         file.write(formatted_output)
+
+def split_packname_and_cons(line):
+    version_ops = [r'<', r'<=', r'!=', r'==', r'>=', r'>', r'~=', r'===']
+    min_op_idx = None
+    for op in version_ops:
+        if line.find(op) != -1:
+            if min_op_idx == None:
+                min_op_idx = line.find(op)
+            else:
+                min_op_idx = min(min_op_idx, line.find(op))
+    res = []
+    if min_op_idx != None:
+        res.append(line[:min_op_idx])
+        res.append(line[min_op_idx:])
+    else:
+        res.append(line)
+    for i in range(len(res)):
+        res[i]=res[i].replace(" ","")
+    return res
+
 
 def get_proj_dependency_from_requirements(file_path):
     requirements_dict = {}

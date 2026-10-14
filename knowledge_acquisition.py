@@ -1,19 +1,56 @@
-from utils.util import *
-from utils.kb_report import generate as kb_report_generate, append_status as kb_append_status
-from extraction.getCall import get_all_used_api
-from extraction.lib_module_and_package_extraction import *
-from extraction.library_api_and_module import *
-from call_graph.get_FDG import *
-import platform, argparse, os, json, time, requests, logging, tempfile, uuid, fcntl
-from packaging.specifiers import SpecifierSet, InvalidSpecifier
-from packaging.version import parse as parse_version
-from packaging.utils import parse_wheel_filename
-from packaging.tags import cpython_tags, compatible_tags
-import tarfile
-import zipfile
+import argparse
+import ast
+import fcntl
+import json
+import logging
+import os
+import platform
 import shutil
 import sys
+import tarfile
+import tempfile
+import time
+import uuid
+import zipfile
 from multiprocessing import Pool, cpu_count
+
+import requests
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
+from packaging.tags import compatible_tags, cpython_tags
+from packaging.utils import parse_wheel_filename
+from packaging.version import parse as parse_version
+
+from call_graph.get_FDG import (
+    download_from_data,
+    get_FDG_from_requirements,
+    get_library_constraint_from_metadata,
+    get_sub_graph,
+    setup_path_1,
+    try_read_constraint_json,
+)
+from extraction.getCall import get_all_used_api
+from extraction.lib_module_and_package_extraction import (
+    get_python_modules_and_packages_from_dir,
+    get_python_modules_and_packages_from_init,
+)
+from extraction.library_api_and_module import extract_from_directory
+from utils.kb_report import (
+    append_status as kb_append_status,
+    generate as kb_report_generate,
+)
+from utils.util import (
+    cleanup_temp_files,
+    detect_call_modules,
+    get_library_call_module,
+    get_proj_dependency_from_requirements,
+    is_version_compat,
+    load_config,
+    norm_pkg,
+    norm_ver,
+    rename_core_keys,
+    resolve_pkg_dir,
+    shortenPath,
+)
 
 
 if (platform.system() == 'Windows'):
@@ -35,21 +72,6 @@ def setup_path(library_path_prefix_pass, constraint_path_prefix_pass, version_pa
     version_path_prefix = version_path_prefix_pass
     api_path_prefix = api_path_prefix_pass
     setup_path_1(library_path_prefix, constraint_path_prefix, version_path_prefix, api_path_prefix)
-
-def load_config(config_path):
-    with open(f"./configure/{config_path}", 'r') as file:
-        config = json.load(file)
-    return config
-
-def get_proj_dependency_from_requirements(file_path):
-    requirements_dict = {}
-    with open(file_path, 'r') as file:
-        for line in file:
-            line = line.strip()
-            if line and not line.startswith('#') and '@' not in line:
-                package, version = line.split('==')
-                requirements_dict[package.lower()] = version
-    return requirements_dict
 
 def get_available_version(FDG, sub_graph, python_version, target_proj_dependency, target_library, target_version):
     target_library_constraint = get_library_constraint_from_metadata(target_library, target_version, python_version)

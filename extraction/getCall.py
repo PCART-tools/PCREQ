@@ -1,20 +1,12 @@
-import ast, os, json
-
-from .extractCall import *
-#from extractCall import *
-#from utils.util import get_path_by_extension
+import ast
+import json
+import os
 import re
 
+from .extractCall import GetFuncCall, Import
+from utils.util import get_path_by_extension
 
-def get_path_by_extension(root_dir, flag='.py'):
-    paths = []
-    for root, dirs, files in os.walk(root_dir):
-        files = [f for f in files if not f[0] == '.']  # skip hidden files such as git files
-        dirs[:] = [d for d in dirs if not d[0] == '.']
-        for f in files:
-            if f.endswith(flag):
-                paths.append(os.path.join(root, f))
-    return paths
+
 def getSelfAPI(root,importDict,libName):
     ansLst=[]
     for node in ast.iter_child_nodes(root):

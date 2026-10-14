@@ -1,5 +1,6 @@
 import ast
 import os
+from utils.util import get_path_by_extension
 
 def extract_imports_from_file(file_path):
     """从给定的 Python 文件中提取 import 信息。"""
@@ -53,16 +54,6 @@ def paths_of_import_file(file_path):
     structure = infer_directory_structure(imports)
     directory_paths = print_directory_structure(structure)
     return list(dict.fromkeys(directory_paths))
-
-def get_path_by_extension(root_dir, flag='.py'):
-    paths = []
-    for root, dirs, files in os.walk(root_dir):
-        files = [f for f in files if not f[0] == '.']  # skip hidden files such as git files
-        dirs[:] = [d for d in dirs if not d[0] == '.']
-        for f in files:
-            if f.endswith(flag):
-                paths.append(os.path.join(root, f))
-    return paths
 
 
 def get_paths_of_import(root_dir):
