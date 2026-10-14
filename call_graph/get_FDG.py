@@ -7,7 +7,7 @@ import time
 import uuid
 import logging
 from packaging.markers import Marker
-from utils.util import norm_pkg, resolve_pkg_dir, norm_ver
+from utils.util import norm_pkg, resolve_pkg_dir, norm_ver, split_packname_and_cons, get_tree_with_feature_version
 
 if (platform.system() == 'Windows'):
     slash = "\\"
@@ -35,25 +35,6 @@ def split_and_take_first_part(elements):
             res.append(element.split(';')[0])
         else:
             res.append(element)
-    return res
-
-def split_packname_and_cons(line):
-    version_ops = [r'<', r'<=', r'!=', r'==', r'>=', r'>', r'~=', r'===']
-    min_op_idx = None
-    for op in version_ops:
-        if line.find(op) != -1:
-            if min_op_idx == None:
-                min_op_idx = line.find(op)
-            else:
-                min_op_idx = min(min_op_idx, line.find(op))
-    res = []
-    if min_op_idx != None:
-        res.append(line[:min_op_idx])
-        res.append(line[min_op_idx:])
-    else:
-        res.append(line)
-    for i in range(len(res)):
-        res[i]=res[i].replace(" ","")
     return res
 
 def remove_parentheses_from_end(elements):
@@ -175,25 +156,6 @@ def filter_extra_markers(requires_dist):
     return result
 
 def get_tree(filename):
-    def get_tree_with_feature_version(filename, feature_version=None):
-        """
-        Get the entire AST for this file
-
-        :param filename str:
-        :rtype: ast
-        """
-        try:
-            with open(filename) as f:
-                raw = f.read()
-        except ValueError:
-            with open(filename, encoding='UTF-8', errors='ignore') as f:
-                raw = f.read()
-        if feature_version == None:
-            tree = ast.parse(raw)
-        else:
-            tree = ast.parse(raw, feature_version=feature_version)
-        return tree
-
     try:
         tree = get_tree_with_feature_version(filename, feature_version=(3, 8))
         return tree

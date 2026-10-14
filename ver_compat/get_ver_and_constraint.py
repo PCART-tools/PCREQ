@@ -1,7 +1,17 @@
-from call_graph.get_FDG import *
-from extraction.import_to_path import *
-from utils.util import *
+import json
+
 from packaging.version import parse as parse_version
+
+from call_graph.get_FDG import get_library_constraint_from_metadata
+from extraction.import_to_path import get_paths_of_import
+from utils.util import (
+    get_library_call_module,
+    is_version_compat,
+    norm_pkg,
+    norm_ver,
+    resolve_pkg_dir,
+    slash,
+)
 
 
 def _is_prerelease(v):
