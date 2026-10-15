@@ -3,6 +3,7 @@ import ast
 from subprocess import run
 from utils.util import split_packname_and_cons, get_tree_with_feature_version
 
+
 def to_skip_line(line):
     if line.startswith(r'#') or len(line) == 0:
         return True
@@ -26,9 +27,7 @@ def delete_whitespace_and_comments(line):
     return line
 
 
-
 def read_txt(txt_path):
-
     clean_lines = []
     try:
         with open(txt_path, 'r', encoding="UTF-8") as f:
@@ -54,14 +53,13 @@ def read_txt(txt_path):
 
 
 def get_packname_and_cons(txt_path):
-    if txt_path==None:
+    if txt_path == None:
         return []
     clean_lines = read_txt(txt_path)
     packname_and_cons_res = []
     for line in clean_lines:
         packname_and_cons = split_packname_and_cons(line)
         packname_and_cons_res.append(packname_and_cons)
-
 
     return packname_and_cons_res
 
@@ -74,6 +72,7 @@ def get_tree(filename):
         refactor_py = os.path.join("utils", "refactor.py")
         order_list = ["python", refactor_py, "-w", "-n", "--no-diffs", "--add-suffix=3"]
         order_list.append(py2_py)
+        # 转换产物沿用 filename + "3" 的命名约定；成功解析后删除。
         py3_py = py2_py + "3"
 
         try:
@@ -90,6 +89,7 @@ def get_tree(filename):
                 os.remove(py3_py)
             raise SyntaxError
 
+    # 保留历史顺序：3.8 语法、当前语法、3.4 语法，最后才尝试 2to3 转换。
     try:
         tree = get_tree_with_feature_version(filename, feature_version=(3, 8))
         return tree
@@ -118,10 +118,13 @@ def get_packname_and_cons_from_setup(setupfilepath):
     install_requires = None
     res = []
     for element in ast.walk(r_node):
-        if type(element) == ast.Call and ((type(element.func) == ast.Name and element.func.id == "setup") or
-                                          ((type(element.func) == ast.Attribute and type(element.func.value)==ast.Name and element.func.value.id == "setuptools" and element.func.attr=="setup"))):
+        if type(element) == ast.Call and (
+            (type(element.func) == ast.Name and element.func.id == "setup") or
+            ((type(element.func) == ast.Attribute and type(element.func.value)
+              == ast.Name and element.func.value.id == "setuptools"
+              and element.func.attr == "setup"))):
             for keyword in element.keywords:
-                if keyword.arg in ["install_requires","setup_requires"]:
+                if keyword.arg in ["install_requires", "setup_requires"]:
                     install_requires = keyword.value
                     break
 
@@ -155,11 +158,9 @@ def get_packname_and_cons_from_setup(setupfilepath):
             continue
 
         assert type(single_req) in [ast.Str, ast.Constant]
-        if type(single_req)==ast.Str:
+        if type(single_req) == ast.Str:
             res.append(split_packname_and_cons(single_req.s))
         else:
             res.append(split_packname_and_cons(single_req.value))
-
-
 
     return res

@@ -1,4 +1,11 @@
-import os, re, ast, platform, json, logging, shutil, time
+import os
+import re
+import ast
+import platform
+import json
+import logging
+import shutil
+import time
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 from packaging import version
@@ -52,6 +59,7 @@ def get_tree_with_feature_version(filename, feature_version=None):
         :param filename str:
         :rtype: ast
         """
+    # 调用方控制语法版本的回退顺序；这里负责一次读取和解析。
     try:
         with open(filename) as f:
             raw = f.read()
@@ -68,12 +76,15 @@ def get_tree_with_feature_version(filename, feature_version=None):
 def get_path_by_extension(root_dir, flag='.py'):
     paths = []
     for root, dirs, files in os.walk(root_dir):
-        files = [f for f in files if not f[0] == '.']  # skip hidden files such as git files
+        files = [
+            f for f in files if not f[0] == '.'
+        ]  # skip hidden files such as git files
         dirs[:] = [d for d in dirs if not d[0] == '.']
         for f in files:
             if f.endswith(flag):
                 paths.append(os.path.join(root, f))
     return paths
+
 
 def find_setup_path(dir_path):
     """
@@ -85,6 +96,7 @@ def find_setup_path(dir_path):
             return os.path.join(root, 'setup.py')
     return None
 
+
 def find_requirements_path(dir_path):
     """
     find requirements.txt path
@@ -95,6 +107,7 @@ def find_requirements_path(dir_path):
         if 'requirements.txt' in files:
             return os.path.join(root, 'requirements.txt')
     return None
+
 
 def is_version_compat(proj_cons, lib_cons):
     """Check if proj_cons satisfies lib_cons (a PEP 440 specifier or similar).
@@ -114,7 +127,8 @@ def is_version_compat(proj_cons, lib_cons):
     except Exception:
         pass
 
-    # Tier 2: Strip letters, quotes, fix commas (legacy fallback for non-standard versions)
+    # Tier 2: Strip letters, quotes, fix commas (legacy fallback for non-standard
+    # versions)
     new_proj_cons = re.sub(r'[a-zA-Z]', '', proj_cons_clean)
     new_lib_cons = re.sub(r'[a-zA-Z]', '', lib_cons_clean)
     new_lib_cons = new_lib_cons.replace('*', '0')
@@ -129,6 +143,7 @@ def is_version_compat(proj_cons, lib_cons):
     except Exception:
         return False
 
+
 def compare_version(version1, version2):
     v1 = version.parse(version1)
 
@@ -139,11 +154,13 @@ def compare_version(version1, version2):
     else:
         return False
 
+
 def list_to_dict(package_and_cons):
     package_and_cons_dict = {}
     for i in package_and_cons:
         package_and_cons_dict[i[0]] = i[1]
     return package_and_cons_dict
+
 
 class FunctionDefExtractor(ast.NodeVisitor):
     def __init__(self):
@@ -154,16 +171,18 @@ class FunctionDefExtractor(ast.NodeVisitor):
         self.function_names.append(node.name)
         self.generic_visit(node)
 
+
 def extract_function_defs_from_file(file_path):
     with open(file_path, "r", encoding="utf-8") as file:
         file_content = file.read()
-        
+
     # 解析 AST
     tree = ast.parse(file_content)
     extractor = FunctionDefExtractor()
     extractor.visit(tree)
-    
+
     return extractor.function_names
+
 
 def extract_classes_from_file(file_path):
     """从给定的 Python 文件中提取所有的类名"""
@@ -186,25 +205,26 @@ def extract_classes_from_file(file_path):
 
     return classes
 
+
 def get_library_call_module(library):
-        module_map = {
-            'scikit-learn': 'sklearn',
-            'pillow': 'PIL',
-            'grpcio': 'grpc',
-            'absl-py': 'absl',
-            'pytorch-lightning': 'pytorch_lightning',
-            'opencv-python': 'cv2',
-            'scikit-image': 'skimage',
-            'tensorboardx': 'tensorboardX',
-            'python-dateutil': 'dateutil',
-            'python-dotenv': 'dotenv',
-            'pysocks': 'socks',
-            'python-gflags': 'gflags',
-            'websocket-client': 'websocket',
-            'nvidia-ml-py3': 'pynvml',
-            'greenlet': 'greenlet',
-        }
-        return module_map.get(library, library)
+    module_map = {
+        'scikit-learn': 'sklearn',
+        'pillow': 'PIL',
+        'grpcio': 'grpc',
+        'absl-py': 'absl',
+        'pytorch-lightning': 'pytorch_lightning',
+        'opencv-python': 'cv2',
+        'scikit-image': 'skimage',
+        'tensorboardx': 'tensorboardX',
+        'python-dateutil': 'dateutil',
+        'python-dotenv': 'dotenv',
+        'pysocks': 'socks',
+        'python-gflags': 'gflags',
+        'websocket-client': 'websocket',
+        'nvidia-ml-py3': 'pynvml',
+        'greenlet': 'greenlet',
+    }
+    return module_map.get(library, library)
 
 
 def _dedup_roots(entries):
@@ -242,8 +262,8 @@ def _match_package_name(all_entries, suffix, package_name):
     norm_pkg = package_name.replace("-", "_")
     # Strategy A: match by .dist-info directory name
     for d, entries in all_entries:
-        d_name = d[:-(len(suffix) + 1)]        # strip ".dist-info" / ".egg-info"
-        d_pkg = d_name.rsplit("-", 1)[0]        # strip version suffix
+        d_name = d[:-(len(suffix) + 1)]  # strip ".dist-info" / ".egg-info"
+        d_pkg = d_name.rsplit("-", 1)[0]  # strip version suffix
         if d_pkg.replace("-", "_") == norm_pkg:
             return _dedup_roots(entries)
     # Strategy B: match by top_level.txt entry
@@ -335,25 +355,28 @@ def detect_call_modules(target_dir, package_name=None):
                 modules.append(f[:-3])
     return modules
 
+
 def transform_and_remove_last_segment(input_str):
     # 将点号替换为斜杠
     transformed_str = input_str.replace('.', '/')
-    
+
     # 移除最后一个斜杠及其后面的所有内容
     last_slash_index = transformed_str.rfind('/')
     if last_slash_index != -1:
         transformed_str = transformed_str[:last_slash_index]
-    
+
     return transformed_str
 
-def getAst(filePath,strFlag=0): #若strFlag=1,则表明传进来的是一个api，而不是一个路径
-    if strFlag==0:
-        with open(filePath,'r') as f:
-            s=f.read()
-        root=ast.parse(s,filename='<unknown>',mode='exec')
+
+def getAst(filePath, strFlag=0):  # 若strFlag=1,则表明传进来的是一个api，而不是一个路径
+    if strFlag == 0:
+        with open(filePath, 'r') as f:
+            s = f.read()
+        root = ast.parse(s, filename='<unknown>', mode='exec')
         return root
-    root=ast.parse(filePath,filename='<unknown>',mode='exec')
+    root = ast.parse(filePath, filename='<unknown>', mode='exec')
     return root
+
 
 def find_init_files(directory):
     init_files = []
@@ -364,10 +387,11 @@ def find_init_files(directory):
     init_files.reverse()
     return init_files
 
+
 class FromImport(ast.NodeVisitor):
     def __init__(self, currentLevel):
-        self._importDict={}
-        self._currentLevel=currentLevel
+        self._importDict = {}
+        self._currentLevel = currentLevel
 
     @property
     def importDict(self):
@@ -375,29 +399,34 @@ class FromImport(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node):
         if node.module is not None:
-            module=node.module
-            if node.level==0:#若是绝对导入，需考虑层级
-                tempLst=module.split('.')
-                if len(tempLst)==1:
-                    module=''
+            module = node.module
+            if node.level == 0:  # 若是绝对导入，需考虑层级
+                tempLst = module.split('.')
+                if len(tempLst) == 1:
+                    module = ''
                 elif self._currentLevel in tempLst:
-                    index=tempLst.index(self._currentLevel)
-                    module='.'.join(tempLst[index+1:])
-            
-            lst=[{'name':name.name,'alias':name.asname} for name in node.names] #可能会import个多个,from A import a,b,c 
-            for dic in lst: #lst中每个元素都是字典
-                key=module+'.'+dic['name'] #dic['name']可能是*
-                key=key.lstrip('.')
+                    index = tempLst.index(self._currentLevel)
+                    module = '.'.join(tempLst[index + 1:])
+
+            lst = [
+                {
+                    'name': name.name,
+                    'alias': name.asname
+                } for name in node.names
+            ]  # 可能会import个多个,from A import a,b,c
+            for dic in lst:  # lst中每个元素都是字典
+                key = module + '.' + dic['name']  # dic['name']可能是*
+                key = key.lstrip('.')
                 if dic['alias']:
-                    self._importDict[key]=dic['alias']
+                    self._importDict[key] = dic['alias']
                 else:
-                    self._importDict[key]=dic['name']
+                    self._importDict[key] = dic['name']
 
 
-
-#通过解析__init__.py,把源码中的部分API路径缩短
-#缩短API路径可能会将不同文件中的API还原成相同的形式，比如A.b.f,A.c.f都还原成A.f
-def shortenPath(api_dict, library, version, library_path_prefix, source_module=None): #lst是传入传出参数，保存修正之后的API路径
+# 通过解析__init__.py,把源码中的部分API路径缩短
+# 缩短API路径可能会将不同文件中的API还原成相同的形式，比如A.b.f,A.c.f都还原成A.f
+# lst是传入传出参数，保存修正之后的API路径
+def shortenPath(api_dict, library, version, library_path_prefix, source_module=None):
     library_call_module = source_module or get_library_call_module(library)
     norm_lib = resolve_pkg_dir(library, library_path_prefix)
     library_path = f"{library_path_prefix}{norm_lib}/{norm_lib}{version}/{library_call_module}"
@@ -405,8 +434,7 @@ def shortenPath(api_dict, library, version, library_path_prefix, source_module=N
     new_dict = api_dict.copy()
     init_files = find_init_files(library_path)
     _t0 = time.time()
-    logging.debug("shortenPath start: %s==%s | %d keys, %d init_files",
-                  library, version, len(api_dict), len(init_files))
+    logging.debug("shortenPath start: %s==%s | %d keys, %d init_files", library, version, len(api_dict), len(init_files))
 
     # Point 35: cache (init_file, currentLevel) -> importDict to avoid
     # repeated FromImport visits while preserving the original semantics.
@@ -493,8 +521,7 @@ def shortenPath(api_dict, library, version, library_path_prefix, source_module=N
 
     _dt = time.time() - _t0
     if _dt > 1:
-        logging.debug("shortenPath done: %s==%s | %d keys, %d init_files → %.0fs",
-                      library, version, len(api_dict), len(init_files), _dt)
+        logging.debug("shortenPath done: %s==%s | %d keys, %d init_files → %.0fs", library, version, len(api_dict), len(init_files), _dt)
     return _clean_keys
 
 
@@ -503,6 +530,7 @@ def load_config(config_path):
     with open(f"./configure/{config_path}", 'r') as file:
         config = json.load(file)
     return config
+
 
 # 配置日志，输出到文件和控制台
 def setup_logging(log_filename):
@@ -527,13 +555,15 @@ def setup_logging(log_filename):
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
+
 def save_dict_to_file(d, filename='output.txt'):
     # 格式化字典
     formatted_output = '\n'.join([f"{key}=={value}" for key, value in sorted(d.items())])
-    
+
     # 将格式化后的内容写入文件
     with open(filename, 'w') as file:
         file.write(formatted_output)
+
 
 def split_packname_and_cons(line):
     version_ops = [r'<', r'<=', r'!=', r'==', r'>=', r'>', r'~=', r'===']
@@ -551,7 +581,7 @@ def split_packname_and_cons(line):
     else:
         res.append(line)
     for i in range(len(res)):
-        res[i]=res[i].replace(" ","")
+        res[i] = res[i].replace(" ", "")
     return res
 
 
@@ -569,8 +599,13 @@ def get_proj_dependency_from_requirements(file_path):
                 requirements_dict[package.lower()] = version
     return requirements_dict
 
+
 def remove_invalid_versions(dependency):
-    return {pkg: ver for pkg, ver in dependency.items() if ver not in ["0.0.0", "0.0", "0"]}
+    return {
+        pkg: ver
+        for pkg, ver in dependency.items() if ver not in ["0.0.0", "0.0", "0"]
+    }
+
 
 def update_project_dependencies(target_proj_dependency, res):
     '''if res is None:
@@ -580,9 +615,9 @@ def update_project_dependencies(target_proj_dependency, res):
             target_proj_dependency[pkg] = ver
     return target_proj_dependency
 
+
 def get_library_paths(library_path_prefix, target_library, version, call_module):
-    return resolve_library_source_path(
-        library_path_prefix, target_library, version, call_module)
+    return resolve_library_source_path(library_path_prefix, target_library, version, call_module)
 
 
 def resolve_library_source_path(library_path_prefix, lib, version, call_module):
@@ -666,6 +701,3 @@ def cleanup_temp_files():
             os.remove(tmp_json)
         except OSError:
             pass
-
-
-

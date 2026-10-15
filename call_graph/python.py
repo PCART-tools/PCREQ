@@ -5,10 +5,9 @@ import tempfile
 from subprocess import run
 from utils.util import get_tree_with_feature_version
 
-from .graph_model import (Group, Node, Call, Variable,
-                    ImportItem, create_fake_node,create_fake_group,
-                   _find_links_for_call)
+from .graph_model import Group, Node, Call, Variable, ImportItem, create_fake_node, create_fake_group, _find_links_for_call
 from .util import ShareFlag, djoin, flatten, OWNER_CONST, GROUP_TYPE
+
 
 def _deal_call_and_variable_pt_call(node):
     assert type(node) == Node
@@ -32,7 +31,7 @@ def find_file_group_from_here(here, path_name, file_dic, level=0):
     def find_parent_file_group(node_or_group):
         assert type(node_or_group) in (Node, Group)
         if type(node_or_group) == Group and node_or_group.group_type == "FILE":
-                return node_or_group
+            return node_or_group
         parent = find_parent_file_group(node_or_group.parent)
         return parent
 
@@ -50,16 +49,16 @@ def find_file_group_from_here(here, path_name, file_dic, level=0):
     here_file_group = find_parent_file_group(here)
     here_name_from_root = here_file_group.name_from_root
 
-    if level==0:
+    if level == 0:
         target_path_first = path_name.split(".")[0]
         root_name = here_name_from_root.split(".")[0]
         res = look_up(path_name, file_dic)
-        if res!=None:
+        if res != None:
             return res
 
     here_menu_name_from_root = ".".join(here_name_from_root.split(".")[:-1])
-    if level-1 > 0:
-        delete_dot_num = level-1
+    if level - 1 > 0:
+        delete_dot_num = level - 1
         here_menu_name_from_root = ".".join(here_menu_name_from_root.split(".")[:-delete_dot_num])
 
     if path_name:
@@ -82,7 +81,7 @@ def get_call_from_func_element(func):
         val = func.value
         while True:
             try:
-                if hasattr(val,'attr'):
+                if hasattr(val, 'attr'):
                     owner_token.append(val.attr)
                 else:
                     owner_token.append(val.id)
@@ -130,7 +129,7 @@ def process_assign(element):
             token = target.id
         else:
             assert type(target) == ast.Attribute
-            if type(target.value) !=ast.Name:
+            if type(target.value) != ast.Name:
                 continue
             token = target.value.id + "." + target.attr
 
@@ -173,7 +172,6 @@ def get_inherits(tree):
     return [base.id for base in tree.bases if type(base) == ast.Name]
 
 
-
 def get_importitems_Import(el, node_or_group, file_dic):
     assert type(el) == ast.Import
     assert type(node_or_group) in (Node, Group)
@@ -185,7 +183,7 @@ def get_importitems_Import(el, node_or_group, file_dic):
         if file_group == None:
             file_group = create_fake_group(absolute_name)
 
-        assert type(file_group)==Group and file_group.group_type == "FILE"
+        assert type(file_group) == Group and file_group.group_type == "FILE"
 
         if file_group.name_from_root == node_or_group.name_from_root:
             continue
@@ -204,7 +202,7 @@ def get_importitems_ImportFrom(el, node_or_group, file_dic):
         target_name = single_import.name
         asname = single_import.asname or target_name
         if target_name == "*":
-            file_group = find_file_group_from_here(node_or_group, source_name,file_dic, level)
+            file_group = find_file_group_from_here(node_or_group, source_name, file_dic, level)
             if file_group != None:
                 assert type(file_group) == Group and file_group.group_type == "FILE"
                 node_or_group.import_items.append(ImportItem(el.lineno, file_group, asname))
@@ -226,13 +224,11 @@ def get_importitems_ImportFrom(el, node_or_group, file_dic):
             for target_node_or_group in target_nodes_or_groups:
                 node_or_group.import_items.append(ImportItem(el.lineno, target_node_or_group, asname))
         else:
-            node_or_group.import_items.append(ImportItem(el.lineno, create_fake_node(module_or_subpackage_name, may_third_party_class = True), asname))
+            node_or_group.import_items.append(ImportItem(el.lineno, create_fake_node(module_or_subpackage_name, may_third_party_class=True), asname))
 
 
 def get_importitems(node_or_group, file_dic):
-
     assert type(node_or_group) in (Node, Group)
-
 
     if node_or_group.flag.import_done == True:
         return
@@ -242,7 +238,7 @@ def get_importitems(node_or_group, file_dic):
 
     node_or_group.flag.import_done = None
 
-    tree= find_ast_tree(node_or_group, file_dic)
+    tree = find_ast_tree(node_or_group, file_dic)
     if tree == None:
         return
     groups, nodes, body = Python.separate_namespaces(tree)
@@ -261,9 +257,9 @@ def get_importitems(node_or_group, file_dic):
 
     node_or_group.flag.import_done = True
 
-def get_class_all_inherits_nodes(class_group):
 
-    assert type(class_group)==Group and class_group.group_type=="CLASS"
+def get_class_all_inherits_nodes(class_group):
+    assert type(class_group) == Group and class_group.group_type == "CLASS"
 
     all_super_classes = set()
     to_search_queue = []
@@ -275,7 +271,7 @@ def get_class_all_inherits_nodes(class_group):
         to_search_queue.append(direct_father)
         all_super_classes.add(direct_father)
 
-    while(len(to_search_queue)!=0):
+    while (len(to_search_queue) != 0):
         t = to_search_queue[0]
         to_search_queue = to_search_queue[1:]
         if not hasattr(t, r"father_classes"):
@@ -294,19 +290,15 @@ def get_class_all_inherits_nodes(class_group):
     return all_inherits_nodes
 
 
-
-def find_node_or_group_in_file_group(node_or_group_name, file_group, file_dic,
-                    searched_files = None, is_class=False):
-
-
+def find_node_or_group_in_file_group(node_or_group_name, file_group, file_dic, searched_files=None, is_class=False):
     assert type(node_or_group_name) == str
-    if type(file_group)!=Group:
+    if type(file_group) != Group:
 
         return []
     assert type(file_group) == Group
     res = []
 
-    if(searched_files!=None and file_group.name_from_root in searched_files):
+    if (searched_files != None and file_group.name_from_root in searched_files):
         return res
 
     for node in file_group.nodes:
@@ -314,7 +306,7 @@ def find_node_or_group_in_file_group(node_or_group_name, file_group, file_dic,
             res.append(node)
 
     for class_group in file_group.subgroups:
-        if class_group.token== node_or_group_name:
+        if class_group.token == node_or_group_name:
             res.append(class_group)
 
     for global_varibale in file_group.global_variables:
@@ -322,28 +314,28 @@ def find_node_or_group_in_file_group(node_or_group_name, file_group, file_dic,
             if type(global_varibale.points_to) == str:
                 pstr = global_varibale.points_to
                 global_varibale.points_to = None
-                if pstr.find(".")==-1:
-                    tmp_res = find_node_or_group_in_file_group(pstr, file_group,file_dic)
-                    if len(tmp_res)>0:
+                if pstr.find(".") == -1:
+                    tmp_res = find_node_or_group_in_file_group(pstr, file_group, file_dic)
+                    if len(tmp_res) > 0:
                         res += tmp_res
                         global_varibale.points_to = tmp_res
                 else:
-                    assert pstr.count(".")==1
+                    assert pstr.count(".") == 1
                     before_dot_pstr = pstr.split(".")[0]
                     after_dot_pstr = pstr.split(".")[1]
                     before_tmp_res = find_node_or_group_in_file_group(before_dot_pstr, file_group, file_dic)
-                    if len(before_tmp_res)==0:
+                    if len(before_tmp_res) == 0:
                         return []
                     for x in before_tmp_res:
-                        if type(x)!=Group:
+                        if type(x) != Group:
                             continue
                         after_tmp_res = find_node_or_group_in_file_group(after_dot_pstr, x, file_dic)
                         if len(after_tmp_res) > 0:
                             res += after_tmp_res
                             global_varibale.points_to = after_tmp_res
-            elif global_varibale.points_to==None:
+            elif global_varibale.points_to == None:
                 continue
-            elif type(global_varibale.points_to)==Call:
+            elif type(global_varibale.points_to) == Call:
                 pcall = global_varibale.points_to
                 if pcall.is_analyzed == False:
                     file_groups = []
@@ -353,10 +345,13 @@ def find_node_or_group_in_file_group(node_or_group_name, file_group, file_dic,
                     _find_links_for_call(pcall, file_group.root_node, all_nodes)
                 res += pcall.results
             else:
-                assert type(global_varibale.points_to)==list and len(global_varibale.points_to)>0
+                assert (
+                    type(global_varibale.points_to) == list
+                    and len(global_varibale.points_to) > 0
+                )
                 res += global_varibale.points_to
 
-    if len(res)>0:
+    if len(res) > 0:
         return res
 
     if file_group.group_type == "CLASS":
@@ -372,10 +367,10 @@ def find_node_or_group_in_file_group(node_or_group_name, file_group, file_dic,
         get_importitems(file_group, file_dic)
 
     file_tmp = find_file_group_from_here(file_group, node_or_group_name, file_dic)
-    if file_tmp!=None:
+    if file_tmp != None:
         res.append(file_tmp)
 
-    if len(res)>0:
+    if len(res) > 0:
         return res
 
     if file_group.flag.import_done == True:
@@ -384,7 +379,7 @@ def find_node_or_group_in_file_group(node_or_group_name, file_group, file_dic,
             if import_item.asname == node_or_group_name and import_item.item.flag.is_fake == False:
                 res.append(import_item.item)
 
-        if len(res)==0:
+        if len(res) == 0:
             if searched_files == None:
                 searched_files = set()
             searched_files.add(file_group.name_from_root)
@@ -392,10 +387,13 @@ def find_node_or_group_in_file_group(node_or_group_name, file_group, file_dic,
             for import_item in file_group.import_items:
                 if import_item.item.flag.is_fake:
                     continue
-                if type(import_item.item)==Group and import_item.item.group_type=="FILE":
+                if (
+                    type(import_item.item) == Group
+                    and import_item.item.group_type == "FILE"
+                ):
                     # print("find: ", node_or_group_name, " in ", import_item.item.token)
                     newres = find_node_or_group_in_file_group(node_or_group_name, import_item.item, file_dic, searched_files)
-                    if len(newres)!=0:
+                    if len(newres) != 0:
                         return newres
 
     return res
@@ -405,28 +403,31 @@ def find_node_or_group(name_from_root, file_dic):
     res = []
 
     # 1. find the file group
-    matched_file_names=[]
+    matched_file_names = []
     for file_name in file_dic.keys():
         if name_from_root.startswith(file_name):
-            if len(name_from_root)==len(file_name) or name_from_root[len(file_name)]=='.':
+            if (
+                len(name_from_root) == len(file_name)
+                or name_from_root[len(file_name)] == '.'
+            ):
                 matched_file_names.append(file_name)
 
-    if len(matched_file_names)==0:
+    if len(matched_file_names) == 0:
         return None
-    assert len(matched_file_names)==1
+    assert len(matched_file_names) == 1
 
     file_name_from_root = matched_file_names[0]
     file_group = file_dic[file_name_from_root][1]
-    assert type(file_group)==Group and file_group.group_type =="FILE"
+    assert type(file_group) == Group and file_group.group_type == "FILE"
 
     # 2.1 name_from_root represent a file
     if file_name_from_root == name_from_root:
         res.append(file_group)
         return res
 
-    suffix = name_from_root[len(file_name_from_root):] 
+    suffix = name_from_root[len(file_name_from_root):]
 
-    if suffix.count(".") == 1 :
+    if suffix.count(".") == 1:
         func_or_class_token = suffix[1:]
 
         for node in file_group.nodes:
@@ -448,18 +449,18 @@ def find_node_or_group(name_from_root, file_dic):
                         assert node.name_from_root == name_from_root
                         res.append(node)
 
-    if len(res)==0:
+    if len(res) == 0:
         return None
 
     return res
 
-def find_ast_tree(node_or_group, file_dic):
 
+def find_ast_tree(node_or_group, file_dic):
     def find_sub_tree_in_a_ast_tree(target, tree):
         assert type(target) in (Node, Group)
 
         if type(target) == Group:
-            assert(target.group_type=="CLASS")
+            assert (target.group_type == "CLASS")
             groups, nodes, body = Python.separate_namespaces(tree)
             for el in groups:
                 assert type(el) == ast.ClassDef
@@ -474,8 +475,6 @@ def find_ast_tree(node_or_group, file_dic):
                     return el
         return None
 
-
-
     assert type(node_or_group) in (Node, Group)
 
     if node_or_group.flag.is_fake:
@@ -485,7 +484,7 @@ def find_ast_tree(node_or_group, file_dic):
         return None
 
     if type(node_or_group) == Group:
-        group=node_or_group
+        group = node_or_group
         if group.group_type == "FILE":
             file_ast = file_dic[group.name_from_root][0]
             return file_ast
@@ -505,27 +504,27 @@ def find_ast_tree(node_or_group, file_dic):
                 else:
                     return None
 
-
-            if res!=None:
+            if res != None:
                 return res
 
     else:
         assert type(node_or_group) == Node
         node = node_or_group
         assert type(node.parent) == Group
-        parent_ast = find_ast_tree(node.parent, file_dic) 
+        parent_ast = find_ast_tree(node.parent, file_dic)
         res = find_sub_tree_in_a_ast_tree(node, parent_ast)
         if res != None:
             return res
 
-#class Python(BaseLanguage):
+
+# class Python(BaseLanguage):
 class Python(object):
     @staticmethod
     def assert_dependencies():
         pass
 
     @staticmethod
-    def get_tree(filename,_):
+    def get_tree(filename, _):
         def process_refactor_get_tree(filename):
             """Run 2to3 refactor, writing output to a temp directory.
 
@@ -538,19 +537,18 @@ class Python(object):
             assert os.path.exists(py2_py)
 
             with tempfile.TemporaryDirectory() as tmpdir:
-                order_list = ["python", refactor_py, "-w", "-n",
-                               "--no-diffs", "--add-suffix=3",
-                               "-o", tmpdir, py2_py]
+                order_list = [
+                    "python", refactor_py, "-w", "-n", "--no-diffs", "--add-suffix=3",
+                    "-o", tmpdir, py2_py
+                ]
                 run(order_list, capture_output=True)
-                converted = os.path.join(
-                    tmpdir, os.path.basename(py2_py) + "3")
+                converted = os.path.join(tmpdir, os.path.basename(py2_py) + "3")
                 if not os.path.exists(converted):
-                    raise SyntaxError(
-                        "2to3 failed to convert %s" % filename)
-                tree = get_tree_with_feature_version(
-                    converted, feature_version=(3, 4))
+                    raise SyntaxError("2to3 failed to convert %s" % filename)
+                tree = get_tree_with_feature_version(converted, feature_version=(3, 4))
                 return tree
 
+        # 保留历史顺序：3.8 语法、当前语法、3.4 语法，最后才尝试 2to3 转换。
         try:
             tree = get_tree_with_feature_version(filename, feature_version=(3, 8))
             return tree
@@ -574,7 +572,7 @@ class Python(object):
         groups = []
         nodes = []
         body = []
-        if tree==None:
+        if tree == None:
             return groups, nodes, body
         for el in tree.body:
             if type(el) == ast.FunctionDef:
@@ -617,7 +615,6 @@ class Python(object):
                 else:
                     body.append(el)
 
-
         return groups, nodes, body
 
     @staticmethod
@@ -635,8 +632,7 @@ class Python(object):
         if parent.group_type == GROUP_TYPE.FILE:
             import_tokens = [djoin(parent.token, token)]
 
-        ret = Node(name_from_root, token, calls, variables, parent, import_tokens=import_tokens,
-                     line_number=line_number, is_constructor=is_constructor)
+        ret = Node(name_from_root, token, calls, variables, parent, import_tokens=import_tokens, line_number=line_number, is_constructor=is_constructor)
 
         _deal_call_and_variable_pt_call(ret)
 
@@ -653,7 +649,6 @@ class Python(object):
         _deal_call_and_variable_pt_call(ret)
         return ret
 
-
     @staticmethod
     def make_class_group(tree, parent):
         assert type(tree) == ast.ClassDef
@@ -667,31 +662,30 @@ class Python(object):
         import_tokens = [djoin(parent.token, token)]
         inherits = get_inherits(tree)
 
-        name_from_root = parent.name_from_root +'.'+token
+        name_from_root = parent.name_from_root + '.' + token
 
-        class_group = Group(name_from_root, token, group_type, display_name, import_tokens=import_tokens,
-                            inherits=inherits, line_number=line_number, parent=parent)
+        class_group = Group(name_from_root, token, group_type, display_name, import_tokens=import_tokens, inherits=inherits, line_number=line_number, parent=parent)
 
         for node_tree in node_trees:
             class_group.add_node(Python.make_nodes(node_tree, parent=class_group)[0])
 
         for subgroup_tree in subgroup_trees:
-            class_group.add_subgroup(Python.make_class_group(subgroup_tree, parent = class_group))
+            class_group.add_subgroup(Python.make_class_group(subgroup_tree, parent=class_group))
 
         return class_group
 
+
 def get_file_scope_assigns(lines):
     def global_process_assign(element):
-
-        if type(element.value) not in  [ast.Call, ast.Name, ast.Attribute]:
+        if type(element.value) not in [ast.Call, ast.Name, ast.Attribute]:
             return []
         if type(element.value) == ast.Call:
-            right = get_call_from_func_element(element.value.func) 
+            right = get_call_from_func_element(element.value.func)
         elif type(element.value) == ast.Name:
             right = element.value.id
         else:
             assert type(element.value) == ast.Attribute
-            if type(element.value.value) !=ast.Name:
+            if type(element.value.value) != ast.Name:
                 return []
             right = element.value.value.id + "." + element.value.attr
 
@@ -710,7 +704,7 @@ def get_file_scope_assigns(lines):
     for tree in lines:
         for element in ast.walk(tree):
             if type(element) == ast.Assign:
-                 variables += global_process_assign(element)
+                variables += global_process_assign(element)
 
     variables = list(filter(None, variables))
 

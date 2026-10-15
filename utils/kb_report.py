@@ -115,8 +115,7 @@ def write_summary(kb_path):
     lines.append(f"_{ts}_")
     lines.append("")
     lines.append("## Overall")
-    lines.append(f"{total} configs | {ok_count} ok | {fail_count} failed"
-                 f" | {total_elapsed:.0f}s")
+    lines.append(f"{total} configs | {ok_count} ok | {fail_count} failed" f" | {total_elapsed:.0f}s")
     lines.append("")
     lines.append("## By Project")
     lines.append("| Project | Library | Versions | Total | OK | Fail |")
@@ -164,8 +163,14 @@ def _scan(kb_path):
     issues = []
 
     if not os.path.isdir(libs_dir):
-        return {"total": 0, "ok": 0, "skipped": 0, "failed": 0,
-                "by_library": {}, "issues": []}
+        return {
+            "total": 0,
+            "ok": 0,
+            "skipped": 0,
+            "failed": 0,
+            "by_library": {},
+            "issues": []
+        }
 
     for lib in sorted(os.listdir(libs_dir)):
         lib_dir = os.path.join(libs_dir, lib)
@@ -191,25 +196,21 @@ def _scan(kb_path):
             has_source = _has_source(ver_path)
 
             # Failure/abnormal markers checked FIRST — they override success
-            if os.path.exists(os.path.join(ver_path, ".building")) and \
-                    not os.path.exists(os.path.join(ver_path, ".complete")):
+            if (
+                os.path.exists(os.path.join(ver_path, ".building"))
+                and not os.path.exists(os.path.join(ver_path, ".complete"))
+            ):
                 # .building without .complete → interrupted build
                 lib_failed += 1
                 failed += 1
-                lib_issues.append({"library": lib, "version": ver,
-                                   "status": "interrupted",
-                                   "reason": "build interrupted — .building marker left",
-                                   "fix": "delete directory and re-download"})
+                lib_issues.append({"library": lib, "version": ver, "status": "interrupted", "reason": "build interrupted — .building marker left", "fix": "delete directory and re-download"})
             elif os.path.exists(no_source):
                 lib_skipped += 1
                 skipped += 1
             elif os.path.exists(json_failed):
                 lib_failed += 1
                 failed += 1
-                lib_issues.append({"library": lib, "version": ver,
-                                   "status": "empty_extraction",
-                                   "reason": "API extraction produced empty modules",
-                                   "fix": "check source structure and re-download"})
+                lib_issues.append({"library": lib, "version": ver, "status": "empty_extraction", "reason": "API extraction produced empty modules", "fix": "check source structure and re-download"})
             elif os.path.exists(os.path.join(ver_path, ".complete")):
                 # Build completed — API may be pending or package is metadata-only
                 lib_ok += 1
@@ -223,41 +224,40 @@ def _scan(kb_path):
                 ok += 1
             else:
                 # No markers at all — download likely failed or not attempted
-                artifacts = [f for f in os.listdir(ver_path)
-                            if f.endswith(('.tar.gz', '.zip', '.whl'))]
+                artifacts = [
+                    f for f in os.listdir(ver_path)
+                    if f.endswith(('.tar.gz', '.zip', '.whl'))
+                ]
                 if artifacts:
                     lib_failed += 1
                     failed += 1
-                    lib_issues.append({"library": lib, "version": ver,
-                                       "status": "extraction_failed",
-                                       "reason": "archive downloaded but source not extracted",
-                                       "fix": f"rm -rf {ver_path} && re-run KA"})
+                    lib_issues.append({"library": lib, "version": ver, "status": "extraction_failed", "reason": "archive downloaded but source not extracted", "fix": f"rm -rf {ver_path} && re-run KA"})
                 elif _dir_is_recent(ver_path):
                     lib_failed += 1
                     failed += 1
-                    lib_issues.append({"library": lib, "version": ver,
-                                       "status": "download_failed",
-                                       "reason": "download failed — no archive retrieved from PyPI",
-                                       "fix": f"rm -rf {ver_path} && re-run KA"})
+                    lib_issues.append({"library": lib, "version": ver, "status": "download_failed", "reason": "download failed — no archive retrieved from PyPI", "fix": f"rm -rf {ver_path} && re-run KA"})
                 else:
                     lib_failed += 1
                     failed += 1
-                    lib_issues.append({"library": lib, "version": ver,
-                                       "status": "empty_legacy",
-                                       "reason": "empty directory from old KB",
-                                       "fix": f"find {lib_dir} -empty -type d -delete && re-run KA"})
+                    lib_issues.append({"library": lib, "version": ver, "status": "empty_legacy", "reason": "empty directory from old KB", "fix": f"find {lib_dir} -empty -type d -delete && re-run KA"})
 
         if lib_issues:
             by_library[lib] = {
                 "total": lib_ok + lib_skipped + lib_failed,
-                "ok": lib_ok, "skipped": lib_skipped, "failed": lib_failed,
+                "ok": lib_ok,
+                "skipped": lib_skipped,
+                "failed": lib_failed,
                 "issues": lib_issues,
             }
             issues.extend(lib_issues)
 
     return {
-        "total": total, "ok": ok, "skipped": skipped, "failed": failed,
-        "by_library": by_library, "issues": issues,
+        "total": total,
+        "ok": ok,
+        "skipped": skipped,
+        "failed": failed,
+        "by_library": by_library,
+        "issues": issues,
     }
 
 
@@ -285,8 +285,11 @@ def _has_init_py(dir_path):
         return True
     for d in sorted(os.listdir(dir_path)):
         full = os.path.join(dir_path, d)
-        if os.path.isdir(full) and not d.startswith(".") \
-                and not d.endswith((".dist-info", ".egg-info", ".data")):
+        if (
+            os.path.isdir(full)
+            and not d.startswith(".")
+            and not d.endswith((".dist-info", ".egg-info", ".data"))
+        ):
             if _has_init_py(full):
                 return True
     return False

@@ -4,19 +4,18 @@ from .util import GROUP_TYPE, OWNER_CONST, djoin
 
 
 def _find_links_for_call(call, node_a, all_nodes):
-
     if call.is_analyzed:
         return call.results, None
 
     call.is_analyzed = True
     all_vars = node_a.get_variables_with_priority(call.line_number)
 
-    assert len(all_vars) >= 2 and  len(all_vars) <= 4
+    assert len(all_vars) >= 2 and len(all_vars) <= 4
 
-    third_pirty_vars=[]
+    third_pirty_vars = []
 
     for var_list in all_vars:
-        if len(var_list)==0:
+        if len(var_list) == 0:
             continue
         current_priority_results = []
         for var in var_list:
@@ -33,7 +32,7 @@ def _find_links_for_call(call, node_a, all_nodes):
                     assert isinstance(var_match, Node)
                     current_priority_results.append(var_match)
 
-        if len(current_priority_results)>0:
+        if len(current_priority_results) > 0:
             call.results = current_priority_results
             return call.results, None
 
@@ -42,7 +41,8 @@ def _find_links_for_call(call, node_a, all_nodes):
 
     return None, call
 
-def create_fake_node(name, may_third_party_class = False):
+
+def create_fake_node(name, may_third_party_class=False):
     name_from_root = name
     token = name
     calls = []
@@ -52,6 +52,7 @@ def create_fake_node(name, may_third_party_class = False):
     fake_node.flag.is_fake = True
     fake_node.flag.may_third_party_class = may_third_party_class
     return fake_node
+
 
 def create_fake_group(name):
     name_from_root = name
@@ -63,7 +64,7 @@ def create_fake_group(name):
     return fake_group
 
 
-class Variable():
+class Variable:
     def __init__(self, token, points_to, line_number=None):
         assert token
         assert points_to
@@ -80,8 +81,8 @@ class Variable():
         return f'{self.token}->{self.points_to}'
 
 
-class Call():
-    def __init__(self, token, line_number=None, owner_token=None, definite_constructor=False, is_analyzed = False):
+class Call:
+    def __init__(self, token, line_number=None, owner_token=None, definite_constructor=False, is_analyzed=False):
         self.token = token
         self.owner_token = owner_token
         self.line_number = line_number
@@ -102,7 +103,6 @@ class Call():
         return self.owner_token is not None
 
     def matches_variable(self, variable, all_nodes):
-
         if self.is_attr():
             if self.owner_token == variable.token:
                 if hasattr(variable.points_to, 'flag') and variable.points_to.flag.is_fake:
@@ -114,7 +114,7 @@ class Call():
                         return node
                 for inherit_nodes in getattr(variable.points_to, 'inherits', []):
                     for node in inherit_nodes:
-                        if type(node)!=Node:
+                        if type(node) != Node:
                             continue
                         if self.token == node.token:
                             return node
@@ -132,9 +132,9 @@ class Call():
                     for node in can_call.results:
                         if node.is_constructor:
                             cls = node.parent
-                            assert type(cls)==Group and cls.group_type =="CLASS"
-                            local_found=False
-                            for method  in cls.nodes:
+                            assert type(cls) == Group and cls.group_type == "CLASS"
+                            local_found = False
+                            for method in cls.nodes:
                                 if self.token == method.token:
                                     matched_node_list.append(method)
                                     local_found = True
@@ -146,65 +146,71 @@ class Call():
                                     if self.token == method.token:
                                         matched_node_list.append(method)
 
-                        if node.flag.is_fake and node.flag.may_third_party_class :
+                        if node.flag.is_fake and node.flag.may_third_party_class:
                             class_name = node.name_from_root.split(".")[-1]
-                            if(class_name[0]<'A' or class_name[0]>'Z'):
+                            if (class_name[0] < 'A' or class_name[0] > 'Z'):
                                 continue
                             prefix = node.name_from_root
                             suffix = self.token
                             matched_node_list.append(create_fake_node(prefix + "." + suffix))
 
-                    if len(matched_node_list)>0:
+                    if len(matched_node_list) > 0:
                         return matched_node_list
 
-            elif self.owner_token.startswith(variable.token+".") and hasattr(variable.points_to, 'flag') and variable.points_to.flag.is_fake:
+            elif self.owner_token.startswith(variable.token + ".") and hasattr(variable.points_to, 'flag') and variable.points_to.flag.is_fake:
                 prefix = variable.points_to.name_from_root
                 middle = self.owner_token[len(variable.token):]
                 suffix = self.token
-                return create_fake_node(prefix+middle+"."+suffix)
+                return create_fake_node(prefix + middle + "." + suffix)
 
-            if isinstance(variable.points_to, Group) \
-               and variable.points_to.group_type == GROUP_TYPE.NAMESPACE:
+            if (
+                isinstance(variable.points_to, Group)
+                and variable.points_to.group_type == GROUP_TYPE.NAMESPACE
+            ):
                 parts = self.owner_token.split('.')
                 if len(parts) != 2:
                     return None
                 if parts[0] != variable.token:
                     return None
                 for node in variable.points_to.all_nodes():
-                    if parts[1] == node.namespace_ownership() \
-                       and self.token == node.token:
+                    if (
+                        parts[1] == node.namespace_ownership()
+                        and self.token == node.token
+                    ):
                         return node
 
             return None
         if self.token == variable.token:
             if isinstance(variable.points_to, Node):
                 return variable.points_to
-            if isinstance(variable.points_to, Group) \
-               and variable.points_to.group_type == GROUP_TYPE.CLASS \
-               and variable.points_to.get_constructor():
+            if (
+                isinstance(variable.points_to, Group)
+                and variable.points_to.group_type == GROUP_TYPE.CLASS
+                and variable.points_to.get_constructor()
+            ):
                 return variable.points_to.get_constructor()
 
         return None
 
 
-class ImportItem():
-    def __init__(self,line_number, item, asname=None):
+class ImportItem:
+    def __init__(self, line_number, item, asname=None):
         self.line_number = line_number
         assert type(item) in (Node, Group)
         self.item = item
         self.asname = asname
 
-class Flag():
-    def __init__(self, import_done = False, calls_analyzed = False, is_fake = False, may_third_party_class =  False):
+
+class Flag:
+    def __init__(self, import_done=False, calls_analyzed=False, is_fake=False, may_third_party_class=False):
         self.import_done = import_done
         self.calls_analyzed = calls_analyzed
         self.is_fake = is_fake
         self.may_third_party_class = may_third_party_class
 
 
-class Node():
-    def __init__(self, name_from_root, token, calls, variables, parent, import_tokens=None,
-                 line_number=None, is_constructor=False, is_analyzed=False):
+class Node:
+    def __init__(self, name_from_root, token, calls, variables, parent, import_tokens=None, line_number=None, is_constructor=False, is_analyzed=False):
         self.name_from_root = name_from_root
         self.token = token
         self.line_number = line_number
@@ -240,9 +246,10 @@ class Node():
         return parent
 
     def is_attr(self):
-        return (self.parent
-                and isinstance(self.parent, Group)
-                and self.parent.group_type in (GROUP_TYPE.CLASS, GROUP_TYPE.NAMESPACE))
+        return (
+            self.parent and isinstance(self.parent, Group)
+            and self.parent.group_type in (GROUP_TYPE.CLASS, GROUP_TYPE.NAMESPACE)
+        )
 
     def token_with_ownership(self):
         if self.is_attr():
@@ -298,7 +305,6 @@ class Node():
         return ans
 
     def modi_resolve_str_variable(self, variable):
-
         assert type(variable) == Variable
 
         can_import_items = []
@@ -310,7 +316,7 @@ class Node():
                 can_import_items.append(import_item)
 
         for import_item in can_import_items:
-            if import_item.asname == variable.token and import_item.line_number == variable.line_number: 
+            if import_item.asname == variable.token and import_item.line_number == variable.line_number:
                 return import_item.item
 
         return OWNER_CONST.UNKNOWN_MODULE
@@ -325,7 +331,7 @@ def _wrap_as_variables(sequence):
     return [Variable(el.token, el, el.line_number) for el in sequence]
 
 
-class Edge():
+class Edge:
     def __init__(self, node0, node1):
         self.node0 = node0
         self.node1 = node1
@@ -337,10 +343,8 @@ class Edge():
         return f"<Edge {self.node0} -> {self.node1}"
 
 
-class Group():
-    def __init__(self, name_from_root, token, group_type, display_type, import_tokens=None,
-                 line_number=None, parent=None, inherits=None,
-                 file_absolute_path = None, global_variables = []):
+class Group:
+    def __init__(self, name_from_root, token, group_type, display_type, import_tokens=None, line_number=None, parent=None, inherits=None, file_absolute_path=None, global_variables=[]):
         self.name_from_root = name_from_root
         self.token = token
         self.line_number = line_number
@@ -357,7 +361,6 @@ class Group():
         self.global_variables = global_variables
         self.flag = Flag()
         self.import_items = []
-
 
         self.uid = "cluster_" + os.urandom(4).hex()  # group doesn't work by syntax rules
 
@@ -407,18 +410,21 @@ class Group():
         variables = []
         parent = self
 
-        default_init_node = Node(name_from_root, token, calls, variables, parent, import_tokens=import_tokens,
-                     line_number=line_number, is_constructor=is_constructor)
+        default_init_node = Node(name_from_root, token, calls, variables, parent, import_tokens=import_tokens, line_number=line_number, is_constructor=is_constructor)
 
         call_to_super_init = Call(r"__init__")
 
-        if type(self.inherits)==list and len(self.inherits)>=1 and type(self.inherits[0])==list: 
+        if (
+            type(self.inherits) == list
+            and len(self.inherits) >= 1
+            and type(self.inherits[0]) == list
+        ):
             all_possible_super_init = []
             for super_node_lsit in self.inherits:
                 for super_node in super_node_lsit:
                     if not hasattr(super_node, "token"):
                         print("here")
-                    if super_node.token=="__init__":
+                    if super_node.token == "__init__":
                         all_possible_super_init.append(super_node)
             call_to_super_init.results = all_possible_super_init
             call_to_super_init.is_analyzed = True
@@ -434,19 +440,21 @@ class Group():
             ret += subgroup.all_groups()
         return ret
 
-
     def get_variables(self, line_number=None):
         if self.root_node:
-            variables = (self.root_node.variables
-                        + _wrap_as_variables(self.subgroups)
-                        + _wrap_as_variables(n for n in self.nodes if n != self.root_node))
+            variables = (
+                self.root_node.variables + _wrap_as_variables(self.subgroups) +
+                _wrap_as_variables(n for n in self.nodes if n != self.root_node)
+            )
             if any(v.line_number for v in variables):
                 variables = sorted(variables, key=lambda v: v.line_number, reverse=True)
             return variables
         else:
             assert self.group_type == "CLASS"
-            return [v for node in self.nodes for v in node.variables
-                    if v.token != "self" and v.token.startswith("self")]
+            return [
+                v for node in self.nodes for v in node.variables
+                if v.token != "self" and v.token.startswith("self")
+            ]
 
     def remove_from_parent(self):
         if self.parent:

@@ -7,135 +7,134 @@ from .extractCall import GetFuncCall, Import
 from utils.util import get_path_by_extension
 
 
-def getSelfAPI(root,importDict,libName):
-    ansLst=[]
+def getSelfAPI(root, importDict, libName):
+    ansLst = []
     for node in ast.iter_child_nodes(root):
-        if isinstance(node,ast.ClassDef):
-            if len(node.bases)==0: #只关注有继承的类
-                continue
-            
-            bases=[] #可能含有多个继承
-            callLst=[]
-            defLst=[]
-            
-            #收集基类信息
-            flag=0
-            for it in node.bases:
-                base=ast.unparse(it)
-                if base.split('.')[0] in importDict:
-                    base=importDict[base.split('.')[0]]
-                if libName in base:
-                    flag=1
-                    bases.append(base)
-            if flag==0: #基类中是否含有指定的第三方库
+        if isinstance(node, ast.ClassDef):
+            if len(node.bases) == 0:  # 只关注有继承的类
                 continue
 
-            #收集定义的信息
+            bases = []  # 可能含有多个继承
+            callLst = []
+            defLst = []
+
+            # 收集基类信息
+            flag = 0
+            for it in node.bases:
+                base = ast.unparse(it)
+                if base.split('.')[0] in importDict:
+                    base = importDict[base.split('.')[0]]
+                if libName in base:
+                    flag = 1
+                    bases.append(base)
+            if flag == 0:  # 基类中是否含有指定的第三方库
+                continue
+
+            # 收集定义的信息
             for n in ast.iter_child_nodes(node):
-                if isinstance(n,ast.FunctionDef):
+                if isinstance(n, ast.FunctionDef):
                     defLst.append(n.name)
-            
-            #递归搜索call节点
-            callVisitor=GetFuncCall()
+
+            # 递归搜索call节点
+            callVisitor = GetFuncCall()
             callVisitor.dfsVisit(node)
-            callInfos=callVisitor.func_call
+            callInfos = callVisitor.func_call
             for Tuple in callInfos:
                 callLst.append(Tuple[0])
-            
-            ansLst.append((bases,defLst,callLst))
-    
+
+            ansLst.append((bases, defLst, callLst))
+
     return ansLst
 
 
 # 每次传进来一个.py文件，抽取所有的调用API
 # 返回值是一个字典，key是还原后的API+参数，value是还原前的API+参数
-def getCallFunction(filePath,libName):
-    with open(filePath,'r',encoding='UTF-8') as f:
-        codeText=f.read()
+def getCallFunction(filePath, libName):
+    with open(filePath, 'r', encoding='UTF-8') as f:
+        codeText = f.read()
         f.seek(0)
-        codeLst=f.readlines()
+        codeLst = f.readlines()
     try:
-        root_node=ast.parse(codeText,filename='<unknown>',mode='exec')
+        root_node = ast.parse(codeText, filename='<unknown>', mode='exec')
 
-        #找出树中所有的模块名
-        import_visitor=Import()
+        # 找出树中所有的模块名
+        import_visitor = Import()
         import_visitor.visit(root_node)
-        md_names=import_visitor.get_md_name() #dict
-
+        md_names = import_visitor.get_md_name()  # dict
 
         # 找出树中所有的Call节点
-        call_visitor=GetFuncCall()
+        call_visitor = GetFuncCall()
         call_visitor.dfsVisit(root_node)
-        all_func_calls=call_visitor.func_call #[(api1,para1,callState, lineno),(api2,para2, callState, lineno),...()]
-        
+        # [(api1,para1,callState, lineno),(api2,para2, callState, lineno),...()]
+        all_func_calls = call_visitor.func_call
+
         # 通过赋值语句和import字典来还原每个调用的API
-        apiFormatDict={} #保存还原前的API后还原后的API的对应关系
+        apiFormatDict = {}  # 保存还原前的API后还原后的API的对应关系
         '''selfAPIs=[] #保存通过self调用的API'''
-        for callName,paraStr,callState,lineno in all_func_calls:
-            name_parts=callName.split('.') #按.进行字段拆分
+        for callName, paraStr, callState, lineno in all_func_calls:
+            name_parts = callName.split('.')  # 按.进行字段拆分
             '''if 'self' in name_parts[0]:
                 selfAPIs.append((callName,paraStr,callState,lineno))'''
-                # continue
-            
-            #先通过赋值语句进行还原
-            #a=A(x)
-            #a.b(y) --> A(x).b(y)
-            firstModify=callName #此处只考虑了第一个名字
-            #firstModify=''
-            #print(firstModify)
-            #break
-            index=-1 #此处改成直接从源码中按行查找 2023.6.15
+            # continue
+
+            # 先通过赋值语句进行还原
+            # a=A(x)
+            # a.b(y) --> A(x).b(y)
+            firstModify = callName  # 此处只考虑了第一个名字
+            # firstModify=''
+            # print(firstModify)
+            # break
+            index = -1  # 此处改成直接从源码中按行查找 2023.6.15
             for i in range(len(codeLst)):
-                if f"{callName}({paraStr})".replace(' ','') in codeLst[i].replace(' ','').rstrip('\n'):
-                    index=i
+                if f"{callName}({paraStr})".replace(' ', '') in codeLst[i].replace(' ', '').rstrip('\n'):
+                    index = i
                     break
-            
-            if index!=-1:
-                index-=1
-                while index>=0:
-                    s=codeLst[index].replace(' ','').rstrip('\n')
-                    if name_parts[0]!='self':
-                        if f"{name_parts[0]}="==s[0:len(name_parts[0])+1]:
-                            pos=s.find('=')
-                            #print(f"{callName}({paraStr})")
-                            #print(pos)
-                            firstModify=s[pos+1:]+'.'+'.'.join(name_parts[1:])
-                            #print(s[pos+1:]+'.'+'.'.join(name_parts[1:]))
-                            #break
-                    else: #self.a=A(), self.a.f() --> A.f()
-                        if len(name_parts)>2 and f"{'.'.join(name_parts[0:2])}=" in s:
-                            pos=s.find('=')
-                            firstModify=s[pos+1:]+'.'+'.'.join(name_parts[2:])
-                            #break
-                    index-=1
-            
-            
-            #再将import的别名还原成真名
-            #from faker import Fake as A
+
+            if index != -1:
+                index -= 1
+                while index >= 0:
+                    s = codeLst[index].replace(' ', '').rstrip('\n')
+                    if name_parts[0] != 'self':
+                        if f"{name_parts[0]}=" == s[0:len(name_parts[0]) + 1]:
+                            pos = s.find('=')
+                            # print(f"{callName}({paraStr})")
+                            # print(pos)
+                            firstModify = s[pos + 1:] + '.' + '.'.join(name_parts[1:])
+                            # print(s[pos+1:]+'.'+'.'.join(name_parts[1:]))
+                            # break
+                    else:  # self.a=A(), self.a.f() --> A.f()
+                        if len(name_parts) > 2 and f"{'.'.join(name_parts[0:2])}=" in s:
+                            pos = s.find('=')
+                            firstModify = s[pos + 1:] + '.' + '.'.join(name_parts[2:])
+                            # break
+                    index -= 1
+
+            # 再将import的别名还原成真名
+            # from faker import Fake as A
             # A(x).b(y) --> faker.Fake(x).b(y)
-            secondModify=firstModify
+            secondModify = firstModify
             # if 'save' in firstModify:
             #     print(firstModify)
 
-            #print(secondModify)
-            #break
-            #2024-1-29修改 
-            name_parts=secondModify.split('.')
-            firstParts=name_parts[0]
-            pos=firstParts.find('(')
-            if pos!=-1:
-                temp=firstParts[0:pos]
-                res=firstParts[pos:]
+            # print(secondModify)
+            # break
+            # 2024-1-29修改
+            name_parts = secondModify.split('.')
+            firstParts = name_parts[0]
+            pos = firstParts.find('(')
+            if pos != -1:
+                temp = firstParts[0:pos]
+                res = firstParts[pos:]
             else:
-                temp=firstParts
-                res=''
+                temp = firstParts
+                res = ''
             if temp in md_names:
-                secondModify=(md_names[temp]+res+'.'+'.'.join(name_parts[1:])).rstrip('.') #当nameparts只有一个元素的会在最后多个点，需要去掉
+                secondModify = (md_names[temp] + res + '.' + '.'.join(name_parts[1:])).rstrip('.')  # 当nameparts只有一个元素的会在最后多个点，需要去掉
                 # if 'save' in secondModify:
-                #     print(secondModify) 
-            #函数名和参数分开放，key和value都是tuple
-            apiFormatDict[(secondModify,paraStr,callState,lineno)]=(callName,paraStr,callState,lineno)
-        
+                #     print(secondModify)
+            # 函数名和参数分开放，key和value都是tuple
+            apiFormatDict[(secondModify, paraStr, callState, lineno)] = (callName, paraStr, callState, lineno)
+
         # 对self调用的API进行还原
         '''if len(selfAPIs)>0:
             selfInfo=getSelfAPI(root_node,md_names,libName)
@@ -147,110 +146,109 @@ def getCallFunction(filePath,libName):
                             name=bases[0]+'.'+'.'.join(name_parts[1:])
                             apiFormatDict[(name,paraStr,callState,lineno)]=(callName,paraStr,callState,lineno)'''
 
-
-        #print(type(apiFormatDict))
-        #把和指定第三方库相关的callAPI都筛选出来
-        callDict={} #词字典用于之后的匹配和变更分析
-        for key,value in apiFormatDict.items(): #key是还原后的API，value是还原前的API
-            if key[0].split('.')[0]==libName:
-                callDict[f"{value[2]}#_{value[3]}"]=f"{key[0]}({key[1]})" #2023.10.23，确保预处理插桩和在目标版本插桩字典的键都是一样的
-        #print(callDict)
-        #按API的行号从小到大排序,便于之后的插桩 
-        #sortedCallDict=dict(sorted(callDict.items(),key=lambda x:int(x[0].split('#_')[-1])))
-        #print(sortedCallDict)
+        # print(type(apiFormatDict))
+        # 把和指定第三方库相关的callAPI都筛选出来
+        callDict = {}  # 词字典用于之后的匹配和变更分析
+        for key, value in apiFormatDict.items():  # key是还原后的API，value是还原前的API
+            if key[0].split('.')[0] == libName:
+                callDict[f"{value[2]}#_{value[3]}"] = f"{key[0]}({key[1]})"  # 2023.10.23，确保预处理插桩和在目标版本插桩字典的键都是一样的
+        # print(callDict)
+        # 按API的行号从小到大排序,便于之后的插桩
+        # sortedCallDict=dict(sorted(callDict.items(),key=lambda x:int(x[0].split('#_')[-1])))
+        # print(sortedCallDict)
         return callDict
-    
+
     except SyntaxError as e:
-        #print(f"when extract invoked API, parsed {filePath} failed: {e}")
-        return {}     #若对当前文件解析失败，则返回空字典
+        # print(f"when extract invoked API, parsed {filePath} failed: {e}")
+        return {}  # 若对当前文件解析失败，则返回空字典
+
 
 def getCallFunction_wo_libname(filePath):
-    with open(filePath,'r',encoding='UTF-8') as f:
-        codeText=f.read()
+    with open(filePath, 'r', encoding='UTF-8') as f:
+        codeText = f.read()
         f.seek(0)
-        codeLst=f.readlines()
+        codeLst = f.readlines()
     try:
-        root_node=ast.parse(codeText,filename='<unknown>',mode='exec')
+        root_node = ast.parse(codeText, filename='<unknown>', mode='exec')
 
-        #找出树中所有的模块名
-        import_visitor=Import()
+        # 找出树中所有的模块名
+        import_visitor = Import()
         import_visitor.visit(root_node)
-        md_names=import_visitor.get_md_name() #dict
-
+        md_names = import_visitor.get_md_name()  # dict
 
         # 找出树中所有的Call节点
-        call_visitor=GetFuncCall()
+        call_visitor = GetFuncCall()
         call_visitor.dfsVisit(root_node)
-        all_func_calls=call_visitor.func_call #[(api1,para1,callState, lineno),(api2,para2, callState, lineno),...()]
-        
+        # [(api1,para1,callState, lineno),(api2,para2, callState, lineno),...()]
+        all_func_calls = call_visitor.func_call
+
         # 通过赋值语句和import字典来还原每个调用的API
-        apiFormatDict={} #保存还原前的API后还原后的API的对应关系
+        apiFormatDict = {}  # 保存还原前的API后还原后的API的对应关系
         '''selfAPIs=[] #保存通过self调用的API'''
-        for callName,paraStr,callState,lineno in all_func_calls:
-            name_parts=callName.split('.') #按.进行字段拆分
+        for callName, paraStr, callState, lineno in all_func_calls:
+            name_parts = callName.split('.')  # 按.进行字段拆分
             '''if 'self' in name_parts[0]:
                 selfAPIs.append((callName,paraStr,callState,lineno))'''
-                # continue
-            
-            #先通过赋值语句进行还原
-            #a=A(x)
-            #a.b(y) --> A(x).b(y)
-            firstModify=callName #此处只考虑了第一个名字
-            #firstModify=''
-            #print(firstModify)
-            #break
-            index=-1 #此处改成直接从源码中按行查找 2023.6.15
+            # continue
+
+            # 先通过赋值语句进行还原
+            # a=A(x)
+            # a.b(y) --> A(x).b(y)
+            firstModify = callName  # 此处只考虑了第一个名字
+            # firstModify=''
+            # print(firstModify)
+            # break
+            index = -1  # 此处改成直接从源码中按行查找 2023.6.15
             for i in range(len(codeLst)):
-                if f"{callName}({paraStr})".replace(' ','') in codeLst[i].replace(' ','').rstrip('\n'):
-                    index=i
+                if f"{callName}({paraStr})".replace(' ', '') in codeLst[i].replace(' ', '').rstrip('\n'):
+                    index = i
                     break
-            
-            if index!=-1:
-                index-=1
-                while index>=0:
-                    s=codeLst[index].replace(' ','').rstrip('\n')
-                    if name_parts[0]!='self':
-                        if f"{name_parts[0]}="==s[0:len(name_parts[0])+1]:
-                            pos=s.find('=')
-                            #print(f"{callName}({paraStr})")
-                            #print(pos)
-                            firstModify=s[pos+1:]+'.'+'.'.join(name_parts[1:])
-                            #print(s[pos+1:]+'.'+'.'.join(name_parts[1:]))
-                            #break
-                    else: #self.a=A(), self.a.f() --> A.f()
-                        if len(name_parts)>2 and f"{'.'.join(name_parts[0:2])}=" in s:
-                            pos=s.find('=')
-                            firstModify=s[pos+1:]+'.'+'.'.join(name_parts[2:])
-                            #break
-                    index-=1
-            
-            
-            #再将import的别名还原成真名
-            #from faker import Fake as A
+
+            if index != -1:
+                index -= 1
+                while index >= 0:
+                    s = codeLst[index].replace(' ', '').rstrip('\n')
+                    if name_parts[0] != 'self':
+                        if f"{name_parts[0]}=" == s[0:len(name_parts[0]) + 1]:
+                            pos = s.find('=')
+                            # print(f"{callName}({paraStr})")
+                            # print(pos)
+                            firstModify = s[pos + 1:] + '.' + '.'.join(name_parts[1:])
+                            # print(s[pos+1:]+'.'+'.'.join(name_parts[1:]))
+                            # break
+                    else:  # self.a=A(), self.a.f() --> A.f()
+                        if len(name_parts) > 2 and f"{'.'.join(name_parts[0:2])}=" in s:
+                            pos = s.find('=')
+                            firstModify = s[pos + 1:] + '.' + '.'.join(name_parts[2:])
+                            # break
+                    index -= 1
+
+            # 再将import的别名还原成真名
+            # from faker import Fake as A
             # A(x).b(y) --> faker.Fake(x).b(y)
-            secondModify=firstModify
+            secondModify = firstModify
             # if 'save' in firstModify:
             #     print(firstModify)
 
-            #print(secondModify)
-            #break
-            #2024-1-29修改 
-            name_parts=secondModify.split('.')
-            firstParts=name_parts[0]
-            pos=firstParts.find('(')
-            if pos!=-1:
-                temp=firstParts[0:pos]
-                res=firstParts[pos:]
+            # print(secondModify)
+            # break
+            # 2024-1-29修改
+            name_parts = secondModify.split('.')
+            firstParts = name_parts[0]
+            pos = firstParts.find('(')
+            if pos != -1:
+                temp = firstParts[0:pos]
+                res = firstParts[pos:]
             else:
-                temp=firstParts
-                res=''
+                temp = firstParts
+                res = ''
             if temp in md_names:
-                secondModify=(md_names[temp]+res+'.'+'.'.join(name_parts[1:])).rstrip('.') #当nameparts只有一个元素的会在最后多个点，需要去掉
+                secondModify = (md_names[temp] + res + '.' + '.'.join(name_parts[1:])).rstrip('.')  # 当nameparts只有一个元素的会在最后多个点，需要去掉
                 # if 'save' in secondModify:
-                #     print(secondModify) 
-            #函数名和参数分开放，key和value都是tuple
-            apiFormatDict[(secondModify,paraStr,callState,lineno)]=(callName,paraStr,callState,lineno)
-        
+                #     print(secondModify)
+            # 函数名和参数分开放，key和value都是tuple
+            apiFormatDict[(secondModify, paraStr, callState, lineno)] = (callName, paraStr, callState, lineno)
+
         # 对self调用的API进行还原
         '''if len(selfAPIs)>0:
             selfInfo=getSelfAPI(root_node,md_names,libName)
@@ -262,21 +260,21 @@ def getCallFunction_wo_libname(filePath):
                             name=bases[0]+'.'+'.'.join(name_parts[1:])
                             apiFormatDict[(name,paraStr,callState,lineno)]=(callName,paraStr,callState,lineno)'''
 
-
-        #print(type(apiFormatDict))
-        #把和指定第三方库相关的callAPI都筛选出来
-        callDict={} #词字典用于之后的匹配和变更分析
-        for key,value in apiFormatDict.items(): #key是还原后的API，value是还原前的API
-            callDict[f"{value[2]}#_{value[3]}"]=f"{key[0]}({key[1]})" #2023.10.23，确保预处理插桩和在目标版本插桩字典的键都是一样的
-        #print(callDict)
-        #按API的行号从小到大排序,便于之后的插桩 
-        #sortedCallDict=dict(sorted(callDict.items(),key=lambda x:int(x[0].split('#_')[-1])))
-        #print(sortedCallDict)
+        # print(type(apiFormatDict))
+        # 把和指定第三方库相关的callAPI都筛选出来
+        callDict = {}  # 词字典用于之后的匹配和变更分析
+        for key, value in apiFormatDict.items():  # key是还原后的API，value是还原前的API
+            callDict[f"{value[2]}#_{value[3]}"] = f"{key[0]}({key[1]})"  # 2023.10.23，确保预处理插桩和在目标版本插桩字典的键都是一样的
+        # print(callDict)
+        # 按API的行号从小到大排序,便于之后的插桩
+        # sortedCallDict=dict(sorted(callDict.items(),key=lambda x:int(x[0].split('#_')[-1])))
+        # print(sortedCallDict)
         return callDict
-    
+
     except SyntaxError as e:
-        #print(f"when extract invoked API, parsed {filePath} failed: {e}")
-        return {}       #若对当前文件解析失败，则返回空字典
+        # print(f"when extract invoked API, parsed {filePath} failed: {e}")
+        return {}  # 若对当前文件解析失败，则返回空字典
+
 
 def extract_parentheses_content(s):
     # 使用正则表达式匹配括号及其内容，包括括号本身
@@ -287,10 +285,12 @@ def extract_parentheses_content(s):
     else:
         return ""
 
+
 def get_last_part_after_first_parenthesis(s):
     # 按第一个 '(' 分割字符串，返回分割后的最后一部分
     parts = s.split('(', 1)  # 仅分割一次
     return parts[-1] if len(parts) > 1 else parts[0]  # 如果有 '('，返回分割后的最后一部分，否则返回原字符串
+
 
 def _extract_api_data(data_dir):
     all_apis = []
@@ -304,7 +304,7 @@ def _extract_api_data(data_dir):
         for value in values:
             api_name = value.split('(')[0]
             all_apis.append(api_name)
-            api_paras_map[api_name] = "("+get_last_part_after_first_parenthesis(value)
+            api_paras_map[api_name] = "(" + get_last_part_after_first_parenthesis(value)
         for key in CallDict:
             new_value = key.split('(')[0]
             new_key = CallDict[key].split('(')[0]
@@ -323,6 +323,7 @@ def get_all_used_api(data_dir, package_name):
     pkg_ver = data_dir.split('/')[-2]
 
     cache_dir = "./extraction/cache"
+    # 缓存键沿用末两级目录；package_name 的 API 过滤在缓存读取后进行。
     cache_file = os.path.join(cache_dir, pkg, f"{pkg_ver}.json")
 
     if os.path.exists(cache_file):
@@ -334,6 +335,7 @@ def get_all_used_api(data_dir, package_name):
     else:
         result = _extract_api_data(data_dir)
         os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        # 先写同目录临时文件再替换，避免读取到尚未写完的 JSON。
         tmp_file = f"{cache_file}.{os.getpid()}.tmp"
         with open(tmp_file, "w") as f:
             json.dump(result, f)
@@ -361,6 +363,7 @@ def get_all_used_api(data_dir, package_name):
             api_paras_map[key.split('.')[-1]] = result["api_paras_map"][key]
 
     return all_apis, new_CallDict, api_file_map, api_paras_map
+
 
 if __name__ == '__main__':
     path = "/dataset/lei/projects/MASTER-pytorch"

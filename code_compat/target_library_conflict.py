@@ -8,8 +8,14 @@ from extraction.library_api_and_module import extract_from_directory
 from extraction.get_attribute_from_proj import get_attributes_from_file
 from call_graph.get_FDG import get_FDG_from_requirements
 from .params_compat import analyzeCompatibility
-import json, platform, time, re, ast, os, logging
-#from fuzzywuzzy import process
+import json
+import platform
+import time
+import re
+import ast
+import os
+import logging
+# from fuzzywuzzy import process
 from thefuzz import process
 
 
@@ -30,6 +36,7 @@ def _write_json(path, data):
         json.dump(data, f)
     os.replace(tmp, path)
 
+
 if (platform.system() == 'Windows'):
     slash = "\\"
 else:
@@ -40,6 +47,7 @@ constraint_path_prefix = ""
 version_path_prefix = ""
 api_path_prefix = ""
 
+
 def setup_path_2(library_path_prefix_pass, constraint_path_prefix_pass, version_path_prefix_pass, api_path_prefix_pass):
     global library_path_prefix, constraint_path_prefix, version_path_prefix, api_path_prefix
     library_path_prefix = library_path_prefix_pass
@@ -47,28 +55,32 @@ def setup_path_2(library_path_prefix_pass, constraint_path_prefix_pass, version_
     version_path_prefix = version_path_prefix_pass
     api_path_prefix = api_path_prefix_pass
 
+
 def remove_last_segment(input_str):
     # 移除最后一个斜杠及其后面的所有内容
     tmp = input_str
     last_slash_index = tmp.rfind('/')
     if last_slash_index != -1:
         tmp = tmp[:last_slash_index]
-    
+
     return tmp
+
 
 def extract_after_last_dot(s):
     # 找到最后一个'.'的位置
     last_dot_index = s.rfind('.')
     # 提取最后一个'.'之后的字符串
-    result = s[last_dot_index+1:] if last_dot_index != -1 else s
+    result = s[last_dot_index + 1:] if last_dot_index != -1 else s
     return result
+
 
 def extract_lines(filename, line_number):
     with open(filename, 'r') as file:
         for current_line_number, line in enumerate(file, start=1):
             if current_line_number == line_number:
-                #print(f"{current_line_number}-{line.strip()}")
+                # print(f"{current_line_number}-{line.strip()}")
                 return line.strip()
+
 
 def extract_code_info(file_path, start_line, end_line):
     class RaiseVisitor(ast.NodeVisitor):
@@ -140,6 +152,7 @@ def extract_code_info(file_path, start_line, end_line):
 
     return extracted_expressions
 
+
 def build_reverse_graph(graph):
     """
     构建逆图，即将子节点和父节点的关系反转。
@@ -152,13 +165,14 @@ def build_reverse_graph(graph):
             reverse_graph[child].append(node)
     return reverse_graph
 
+
 def find_parents_chain(reverse_graph, node):
     """
     找到指定节点的所有父节点，并以调用链的方式输出。
     """
     parent_chains = []  # 用来记录所有的父节点链
-    visited = set()     # 用来记录已访问的节点
-    
+    visited = set()  # 用来记录已访问的节点
+
     def _find_parents_recursive(current_node, chain):
         # 如果当前节点有父节点且没有被访问过
         if current_node in reverse_graph and current_node not in visited:
@@ -168,25 +182,27 @@ def find_parents_chain(reverse_graph, node):
                 new_chain = chain + [parent]  # 更新调用链
                 parent_chains.append(new_chain)  # 将新链加入结果
                 _find_parents_recursive(parent, new_chain)  # 递归查找父节点
-    
+
     # 从目标节点开始查找
     _find_parents_recursive(node, [node])
     return parent_chains
 
+
 def generate_parts(input_string):
     parts = input_string.split('/')  # 按照"/"分割字符串
     result = []
-    
+
     # 生成每个子字符串
     for i in range(1, len(parts) + 1):
         result.append('/'.join(parts[:i]))
-    
+
     return result
+
 
 def get_all_related_py_files(py_file):
     res = []
     tmp = remove_last_segment(py_file)
-    #print(tmp)
+    # print(tmp)
     # 找到所有导入的模块
     import_paths = paths_of_import_file(py_file)
     # 找到所有模块对应的文件
@@ -210,35 +226,49 @@ def get_all_related_py_files(py_file):
                 if new_new_py_file not in res:
                     res.append(new_new_py_file)
 
-
     return res
+
 
 def get_py_files_to_examine(api_to_examine, target_project, target_proj_dependency):
     py_files_to_examine = []
-    #print(api_to_examine)
+    # print(api_to_examine)
     for api in api_to_examine:
         if api.endswith("__init__") or api.endswith("__default_init__"):
-            #tmp = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + transform_and_remove_last_segment(transform_and_remove_last_segment(api)) + ".py"
+            # tmp = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + transform_and_remove_last_segment(transform_and_remove_last_segment(api)) + ".py"
             tmp = generate_parts(transform_and_remove_last_segment(transform_and_remove_last_segment(api)))
-            #print(transform_and_remove_last_segment(transform_and_remove_last_segment(api)))
+            # print(transform_and_remove_last_segment(transform_and_remove_last_segment(api)))
             i = 0
             for j in reversed(tmp):
                 if i == 0:
-                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py"
+                    _path = (
+                        library_path_prefix + target_project + slash + target_project
+                        + target_proj_dependency[target_project] + slash + j + ".py"
+                    )
                 else:
-                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py"
+                    _path = (
+                        library_path_prefix + target_project + slash + target_project
+                        + target_proj_dependency[target_project] + slash + j + "/"
+                        + "__init__.py"
+                    )
                 if _path not in py_files_to_examine:
                     py_files_to_examine.append(_path)
                 i = i + 1
-            #py_files_to_examine.add(tmp)
+            # py_files_to_examine.add(tmp)
         else:
             tmp = generate_parts(transform_and_remove_last_segment(api))
             i = 0
             for j in reversed(tmp):
                 if i == 0:
-                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + ".py"
+                    _path = (
+                        library_path_prefix + target_project + slash + target_project
+                        + target_proj_dependency[target_project] + slash + j + ".py"
+                    )
                 else:
-                    _path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + j + "/" + "__init__.py"
+                    _path = (
+                        library_path_prefix + target_project + slash + target_project
+                        + target_proj_dependency[target_project] + slash + j + "/"
+                        + "__init__.py"
+                    )
                 if _path not in py_files_to_examine:
                     py_files_to_examine.append(_path)
                 i = i + 1
@@ -253,14 +283,15 @@ def get_py_files_to_examine(api_to_examine, target_project, target_proj_dependen
     py_files_to_examine = list(dict.fromkeys(new_py_files_to_examine))
     return py_files_to_examine
 
+
 def extract_inner_parentheses(s):
     stack = []  # 用来记录括号的嵌套
     result = ""  # 用来存储结果
     inside = False  # 是否在括号内
 
-    #cnt = 0  # 记录括号的数量
+    # cnt = 0  # 记录括号的数量
     for char in s:
-        #print(stack)
+        # print(stack)
         if char == '(':
             if not stack:  # 如果栈为空，说明是第一个括号
                 inside = True
@@ -276,11 +307,12 @@ def extract_inner_parentheses(s):
         else:
             result += char
             break
-    
+
     while result.endswith(")"):
         result = result[:-1]
     result = f"{result})"
     return result if result else None
+
 
 def generate_full_parent_chains(lst):
     result = []
@@ -289,11 +321,12 @@ def generate_full_parent_chains(lst):
             result.append(sublist[:i])
     return result
 
+
 def full_CG(s, proj_path, target_project, target_library, start_version, target_version, start_library_path, target_library_path, target_library_call_module, proj, path, target_proj_dependency, python_version):
     os.makedirs('./data/call_graph/', exist_ok=True)
     prefix = ""
     entry_path = None
-    if target_project != proj:  #例如torchvision-torch，从目标项目为入口得到torchvision实际使用torch的api
+    if target_project != proj:  # 例如torchvision-torch，从目标项目为入口得到torchvision实际使用torch的api
         FDG = get_FDG_from_requirements(target_proj_dependency, python_version)
         # 构建逆图
         reverse_graph = build_reverse_graph(FDG)
@@ -310,37 +343,50 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                 else:
                     s = []
             else:
-                #例如，没有proj-torchvision-outside.json，重新建立调用图
+                # 例如，没有proj-torchvision-outside.json，重新建立调用图
                 new_s, y, z, m = get_all_used_api(path, target_project_call_module)
 
                 ls = ""
                 for name in new_s:
                     ls += name
                     ls += ","
-                
+
                 if ls == "":
                     input1 = {}
                     input2 = []
                     _write_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-outside.json', input1)
                     _write_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-entry.json', input2)
                 else:
-                    target_project_path = library_path_prefix + target_project + slash + target_project + target_proj_dependency[target_project] + slash + target_project_call_module
-                    partc = [target_project_path, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_project + target_proj_dependency[target_project] + ".json", "--entry-functions", ls]
-                    cfmain(sys_argv=partc, if_add_package_name = True)
+                    target_project_path = (
+                        library_path_prefix + target_project + slash + target_project
+                        + target_proj_dependency[target_project] + slash
+                        + target_project_call_module
+                    )
+                    partc = [
+                        target_project_path, "--language", "py", "--output",
+                        "data/call_graph/" + proj + "-" + target_project +
+                        target_proj_dependency[target_project] + ".json",
+                        "--entry-functions", ls
+                    ]
+                    cfmain(sys_argv=partc, if_add_package_name=True)
 
                 data = _safe_load_json('./data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + '-outside.json')
                 if target_library in data.keys():
                     s = data[target_library]
                 else:
                     s = []
-            #建立proj-torchvision-torch调用图
+            # 建立proj-torchvision-torch调用图
             entry_path = None
             ls = ""
             for name in s:
                 ls += name
                 ls += ","
-            
-            entry_path = './data/call_graph/' + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + '-entry.json'
+
+            entry_path = (
+                './data/call_graph/' + proj + "-" + target_project
+                + target_proj_dependency[target_project] + "-" + target_library
+                + target_proj_dependency[target_library] + '-entry.json'
+            )
             if ls == "":
                 input1 = {}
                 input2 = []
@@ -348,14 +394,26 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                 _write_json(entry_path, input2)
             else:
                 if os.path.exists(start_library_path):
-                    partc = [start_library_path, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + ".json", "--entry-functions", ls]
+                    partc = [
+                        start_library_path, "--language", "py", "--output",
+                        "data/call_graph/" + proj + "-" + target_project +
+                        target_proj_dependency[target_project] + "-" + target_library +
+                        target_proj_dependency[target_library] + ".json",
+                        "--entry-functions", ls
+                    ]
                 else:
                     split_path = start_library_path.split('/')
 
                     # 去除最后两个部分
                     result = '/'.join(split_path[:-2])
-                    partc = [result, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_project + target_proj_dependency[target_project] + "-" + target_library + target_proj_dependency[target_library] + ".json", "--entry-functions", ls]
-                cfmain(sys_argv=partc, if_add_package_name = True)
+                    partc = [
+                        result, "--language", "py", "--output",
+                        "data/call_graph/" + proj + "-" + target_project +
+                        target_proj_dependency[target_project] + "-" + target_library +
+                        target_proj_dependency[target_library] + ".json",
+                        "--entry-functions", ls
+                    ]
+                cfmain(sys_argv=partc, if_add_package_name=True)
         apis_full_name = set()
         if entry_path:
             try:
@@ -376,13 +434,15 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                 for chain_proj in reversed(chain):
                     chain_proj_call_module = get_library_call_module(chain_proj)
 
-                    prefix = prefix + "-" + chain_proj + target_proj_dependency[chain_proj]
-                    #print(prefix)
+                    prefix = (
+                        prefix + "-" + chain_proj + target_proj_dependency[chain_proj]
+                    )
+                    # print(prefix)
                     if os.path.isfile('./data/call_graph/' + prefix + '-outside.json'):
-                        #检查是否有outside.json
+                        # 检查是否有outside.json
                         data = _safe_load_json('./data/call_graph/' + prefix + '-outside.json')
                     else:
-                        #重新建立调用图
+                        # 重新建立调用图
                         if i == 0:
                             new_s, y, z, m = get_all_used_api(path, chain_proj_call_module)
 
@@ -390,22 +450,30 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                             for name in new_s:
                                 ls += name
                                 ls += ","
-                               
+
                             if ls == "":
                                 input1 = {}
                                 input2 = []
                                 _write_json('./data/call_graph/' + prefix + '-outside.json', input1)
                                 _write_json('./data/call_graph/' + prefix + '-entry.json', input2)
                             else:
-                                chain_proj_path = library_path_prefix + chain_proj + slash + chain_proj + target_proj_dependency[chain_proj] + slash + chain_proj_call_module
+                                chain_proj_path = (
+                                    library_path_prefix + chain_proj + slash
+                                    + chain_proj + target_proj_dependency[chain_proj]
+                                    + slash + chain_proj_call_module
+                                )
                                 if os.path.isdir(chain_proj_path):
-                                    partc = [chain_proj_path, "--language", "py", "--output", "data/call_graph/" + prefix + ".json", "--entry-functions", ls]
-                                    cfmain(sys_argv=partc, if_add_package_name = True)
+                                    partc = [
+                                        chain_proj_path, "--language", "py", "--output",
+                                        "data/call_graph/" + prefix + ".json",
+                                        "--entry-functions", ls
+                                    ]
+                                    cfmain(sys_argv=partc, if_add_package_name=True)
                                 else:
                                     _write_json('./data/call_graph/' + prefix + '-outside.json', {})
                                     _write_json('./data/call_graph/' + prefix + '-entry.json', [])
                         else:
-                            #解决一些库的名字就带-的问题
+                            # 解决一些库的名字就带-的问题
                             pos = prefix.rfind('-')
                             if os.path.exists('./data/call_graph/' + prefix[:pos] + '-outside.json'):
                                 data = _safe_load_json('./data/call_graph/' + prefix[:pos] + '-outside.json')
@@ -420,22 +488,30 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                             for name in new_s:
                                 ls += name
                                 ls += ","
-                            
+
                             if ls == "":
                                 input1 = {}
                                 input2 = []
                                 _write_json('./data/call_graph/' + prefix + '-outside.json', input1)
                                 _write_json('./data/call_graph/' + prefix + '-entry.json', input2)
                             else:
-                                chain_proj_path = library_path_prefix + chain_proj + slash + chain_proj + target_proj_dependency[chain_proj] + slash + chain_proj_call_module
+                                chain_proj_path = (
+                                    library_path_prefix + chain_proj + slash
+                                    + chain_proj + target_proj_dependency[chain_proj]
+                                    + slash + chain_proj_call_module
+                                )
                                 if os.path.isdir(chain_proj_path):
-                                    partc = [chain_proj_path, "--language", "py", "--output", "data/call_graph/" + prefix + ".json", "--entry-functions", ls]
-                                    cfmain(sys_argv=partc, if_add_package_name = True)
+                                    partc = [
+                                        chain_proj_path, "--language", "py", "--output",
+                                        "data/call_graph/" + prefix + ".json",
+                                        "--entry-functions", ls
+                                    ]
+                                    cfmain(sys_argv=partc, if_add_package_name=True)
                                 else:
                                     _write_json('./data/call_graph/' + prefix + '-outside.json', {})
                                     _write_json('./data/call_graph/' + prefix + '-entry.json', [])
-                    i = i + 1                      
-                    #prj-A-B-torchvision-torch调用图建立
+                    i = i + 1
+                    # prj-A-B-torchvision-torch调用图建立
                     tmp = _safe_load_json('./data/call_graph/' + prefix + '-entry.json', default=[])
                     api_to_examine = api_to_examine + tmp
                     ls = ""
@@ -449,29 +525,36 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
                         ls += name
                         ls += ","
 
-                    output_path = prefix + "-" + target_library + target_proj_dependency[target_library]
+                    output_path = (
+                        prefix + "-" + target_library
+                        + target_proj_dependency[target_library]
+                    )
                     if ls == "":
                         input1 = {}
                         input2 = []
                         _write_json('./data/call_graph/' + output_path + '-outside.json', input1)
                         _write_json('./data/call_graph/' + output_path + '-entry.json', input2)
                     else:
-                        partc = [start_library_path, "--language", "py", "--output", "data/call_graph/" + output_path + ".json", "--entry-functions", ls]
-                        cfmain(sys_argv=partc, if_add_package_name = True)
+                        partc = [
+                            start_library_path, "--language", "py", "--output",
+                            "data/call_graph/" + output_path + ".json",
+                            "--entry-functions", ls
+                        ]
+                        cfmain(sys_argv=partc, if_add_package_name=True)
 
-                    #提取proj-A-B-torchvision调用的torch的API的全名
-                    #print(end_output_path)
+                    # 提取proj-A-B-torchvision调用的torch的API的全名
+                    # print(end_output_path)
                     tmp = _safe_load_json('./data/call_graph/' + output_path + '-entry.json', default=[])
                     apis_full_name = apis_full_name + tmp
-                
+
     else:
-        #根据提取的API构建调用图
-        #print(f"**************************")
+        # 根据提取的API构建调用图
+        # print(f"**************************")
         ls = ""
         for name in s:
             ls += name
             ls += ","
-        
+
         if ls == "":
             input1 = {}
             input2 = []
@@ -479,17 +562,25 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
             _write_json('./data/call_graph/' + target_project + "-" + target_library + start_version + '-entry.json', input2)
         else:
             if os.path.exists(start_library_path):
-                partc = [start_library_path, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_library + start_version + ".json", "--entry-functions", ls]
-                #print(f"**************************")
+                partc = [
+                    start_library_path, "--language", "py", "--output",
+                    "data/call_graph/" + proj + "-" + target_library + start_version +
+                    ".json", "--entry-functions", ls
+                ]
+                # print(f"**************************")
             else:
                 split_path = start_library_path.split('/')
-                #print(split_path)
+                # print(split_path)
 
                 # 去除最后两个部分
                 result = '/'.join(split_path[:-2])
-                partc = [result, "--language", "py", "--output", "data/call_graph/" + proj + "-" + target_library + start_version + ".json", "--entry-functions", ls]
-            cfmain(sys_argv=partc, if_add_package_name = True)
-        #提取项目调用的API的全名
+                partc = [
+                    result, "--language", "py", "--output", "data/call_graph/" + proj +
+                    "-" + target_library + start_version + ".json", "--entry-functions",
+                    ls
+                ]
+            cfmain(sys_argv=partc, if_add_package_name=True)
+        # 提取项目调用的API的全名
         entry_path = './data/call_graph/' + target_project + "-" + target_library + start_version + '-entry.json'
         try:
             with open(entry_path, 'r') as file:
@@ -497,8 +588,9 @@ def full_CG(s, proj_path, target_project, target_library, start_version, target_
         except (json.JSONDecodeError, FileNotFoundError):
             apis_full_name = set()
         api_to_examine = s.copy()
-    #logging.info(f"**{apis_full_name}******************")
+    # logging.info(f"**{apis_full_name}******************")
     return apis_full_name, api_to_examine
+
 
 def _is_stub_json(path):
     """Return True if JSON file is an empty stub (<200 bytes, no real data)."""
@@ -538,7 +630,7 @@ def get_all_library_info(library_path, library_call_module, version, lib):
         init_dir = get_python_modules_and_packages_from_init(_extract_path, _actual_call_module)
         dir.update(init_dir)
         res["modules"] = list(dir)
-        api_usage_in_target_library, _1, __2, _3  = get_all_used_api(_extract_path, _actual_call_module)
+        api_usage_in_target_library, _1, __2, _3 = get_all_used_api(_extract_path, _actual_call_module)
         res["api_usage"] = list(api_usage_in_target_library)
         funcs = res["functions"]
         classes = res["classes"]
@@ -557,6 +649,7 @@ def get_all_library_info(library_path, library_call_module, version, lib):
         res = json.load(f)
     return res
 
+
 def is_target_library_code_conflict(proj_path, target_project, target_library, start_version, target_version, start_library_path, target_library_path, target_library_call_module, proj, path, target_proj_dependency, python_version):
     res = False
     source_root = target_library_path[:target_library_path.rfind('/')]
@@ -564,11 +657,12 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
         logging.info(f"Checking {target_project} is compatible with {target_library}{target_version}?...")
     else:
         logging.info(f"Checking {target_project}{target_proj_dependency[target_project]} is compatible with {target_library}{target_version}?...")
-    #2、起始版本升级到目标版本后是否有不兼容变更
-    #将项目中调用了目标库的API都提取
-    #这里需要修改，目前最多考虑了两次调用例如proj-torchvision-torch。实际上可能有更多多层次调用（proj-A-B-torchvision-torch）。已修改2024-11-27
-    s, api_calls_dict, api_file_map, api_paras_map = get_all_used_api(proj_path, target_library_call_module) 
-    #print(s)
+    # 2、起始版本升级到目标版本后是否有不兼容变更
+    # 将项目中调用了目标库的API都提取
+    # 这里需要修改，目前最多考虑了两次调用例如proj-torchvision-torch。实际上可能有更多多层次调用（
+    # proj-A-B-torchvision-torch）。已修改2024-11-27
+    s, api_calls_dict, api_file_map, api_paras_map = get_all_used_api(proj_path, target_library_call_module)
+    # print(s)
     s = list(dict.fromkeys(s))  # deduplicate while preserving insertion order
     api_short_to_full_mapping = {}
     api_full_to_short_mapping = {}
@@ -580,11 +674,11 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
             logging.info(f"{target_project}{target_proj_dependency[target_project]} is compatible with {target_library}{target_version}")
         return res
 
-    #获取目标库从起始版本和目标版本的API，模块等
+    # 获取目标库从起始版本和目标版本的API，模块等
     start_api_dict = get_all_library_info(start_library_path, target_library_call_module, start_version, target_library)
     target_api_dict = get_all_library_info(target_library_path, target_library_call_module, target_version, target_library)
     new_s = []
-    #将项目中调用了目标库的API都转化为全调用形式
+    # 将项目中调用了目标库的API都转化为全调用形式
     for i in s:
         if i in start_api_dict['functions']:
             if isinstance(start_api_dict['functions'][i], str):
@@ -594,9 +688,9 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 new_s.append(start_api_dict['classes'][i])
         else:
             new_s.append(i)
-    apis_full_name, api_to_examine = full_CG(new_s, proj_path, target_project, target_library, start_version, target_version, start_library_path, target_library_path, target_library_call_module, proj, path, target_proj_dependency, python_version) 
+    apis_full_name, api_to_examine = full_CG(new_s, proj_path, target_project, target_library, start_version, target_version, start_library_path, target_library_path, target_library_call_module, proj, path, target_proj_dependency, python_version)
     if target_project == proj:
-        #对API进行去重，因为同一个API可能匹配了多种调用形式。通过模糊匹配进行去重。
+        # 对API进行去重，因为同一个API可能匹配了多种调用形式。通过模糊匹配进行去重。
         for i in s:
             api_group = []
             for j in apis_full_name:
@@ -617,12 +711,13 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 if i.split(".")[-1] == j.split(".")[-1]:
                     api_short_to_full_mapping[j] = i
                     api_full_to_short_mapping[i] = j
-    
+
     deprecated_functions, deprecated_classes, deprecated_methods, deprecated_global_vars = get_version_change(start_api_dict, target_api_dict)
-         
-    #、检查头文件部分是否兼容
+
+    # 、检查头文件部分是否兼容
     if target_project != proj:
-        #  例如proj-torchvision-pillow，torchvision中不是所有的.py文件都被涉及到，需要根据实际涉及到的torchvision API来判断涉及到的.py文件
+        # 例如proj-torchvision-pillow，torchvision中不是所有的.py文件都被涉及到，需要根据实际涉及到的torchvision
+        # API来判断涉及到的.py文件
         py_files_to_examine = get_py_files_to_examine(api_to_examine, target_project, target_proj_dependency)
         pkg_and_module = []
         for py_file in py_files_to_examine:
@@ -631,13 +726,14 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 if t not in pkg_and_module:
                     pkg_and_module.append(t)
     else:
-        pkg_and_module = get_paths_of_import(proj_path)  #将项目中的import语句都转化成a.b.c的形式
-    
+        pkg_and_module = get_paths_of_import(proj_path)  # 将项目中的import语句都转化成a.b.c的形式
+
     start_dir = set(start_api_dict['modules'])
     target_dir = set(target_api_dict['modules'])
-    
+
     for module in pkg_and_module:
-        if module in (start_dir - target_dir) and module.startswith(target_library_call_module):
+        if module in (start_dir -
+                      target_dir) and module.startswith(target_library_call_module):
             if module in target_api_dict["api_usage"]:
                 continue
 
@@ -646,8 +742,8 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
             else:
                 logging.info(f"{proj} is not compatible with {target_library}{target_version}-The {module} is deprecated.")
             res = True
-            return res   
-    #解决 from PIL import Image, ImageOps, ImageEnhance, PILLOW_VERSION问题
+            return res
+    # 解决 from PIL import Image, ImageOps, ImageEnhance, PILLOW_VERSION问题
     for module in pkg_and_module:
         if module.startswith(target_library_call_module):
             parts = module.split(".")
@@ -655,14 +751,17 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
         else:
             continue
         if module in deprecated_global_vars:
-            #解决torch.jit.annotations误报问题，API-torch.jit.annotations废弃，但是模块-torch.jit.annotations还存在，所有from .import annotations 也会被误报
+            # 解决torch.jit.annotations误报问题，API-torch.jit.annotations废弃，但是模块
+            # -torch.jit.annotations还存在，所有from .import annotations 也会被误报
             if module in target_dir:
                 continue
             if module in target_api_dict["api_usage"]:
                 continue
             # 解决误报的问题，可以查找import中是否有定义
             flag = 0
-            api_path = source_root + slash + transform_and_remove_last_segment(module) + '.py'
+            api_path = (
+                source_root + slash + transform_and_remove_last_segment(module) + '.py'
+            )
             if os.path.exists(api_path):
                 import_api_names = paths_of_import_file(api_path)
                 api_last_name = module.split(".")[-1]
@@ -682,18 +781,21 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
         elif module in deprecated_functions or module in deprecated_classes:
             if module in target_api_dict["api_usage"]:
                 continue
-            #解决sklearn.metrics.regression.mean_squared_error找不到的问题
+            # 解决sklearn.metrics.regression.mean_squared_error找不到的问题
             flag = 0
             if "." in new_module:
-                init_path = source_root + slash + transform_and_remove_last_segment(module) + slash + '__init__.py'
-                #print(init_path)
+                init_path = (
+                    source_root + slash + transform_and_remove_last_segment(module)
+                    + slash + '__init__.py'
+                )
+                # print(init_path)
                 if os.path.exists(init_path):
                     xxx = paths_of_import_file(init_path)
                     for xx in xxx:
                         if xx.split(".")[-1] == new_module.split(".")[-1]:
                             flag = 1
                             break
-                    
+
                     function_names = extract_function_defs_from_file(init_path)
                     class_names = extract_classes_from_file(init_path)
                     import_api_names = paths_of_import_file(init_path)
@@ -720,7 +822,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                     function_names = extract_function_defs_from_file(init_path)
                     class_names = extract_classes_from_file(init_path)
                     import_api_names = paths_of_import_file(init_path)
-                    #print(function_names)
+                    # print(function_names)
                     for function_name in function_names:
                         if function_name.endswith(new_module):
                             flag = 1
@@ -737,7 +839,9 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 continue
             # 解决误报的问题，可以查找import中是否有定义
             flag = 0
-            api_path2 = source_root + slash + transform_and_remove_last_segment(module) + '.py'
+            api_path2 = (
+                source_root + slash + transform_and_remove_last_segment(module) + '.py'
+            )
             if os.path.exists(api_path2):
                 import_api_names = paths_of_import_file(api_path2)
                 api_last_name = module.split(".")[-1]
@@ -751,9 +855,12 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
             if module in deprecated_functions and module in start_api_dict['functions']:
                 if isinstance(start_api_dict['functions'][module], str):
                     continue
-            #解决torch.nn.functional.pad误报问题，可以查找torch.nn.functional.pyi 是否有def pad
+            # 解决torch.nn.functional.pad误报问题，可以查找torch.nn.functional.pyi 是否有def pad
             flag = 0
-            pyi_file_path4 = target_library_path + slash + transform_and_remove_last_segment(new_module) + '.pyi'
+            pyi_file_path4 = (
+                target_library_path + slash
+                + transform_and_remove_last_segment(new_module) + '.pyi'
+            )
             if os.path.exists(pyi_file_path4):
                 function_names = extract_function_defs_from_file(pyi_file_path4)
                 class_names = extract_classes_from_file(pyi_file_path4)
@@ -767,8 +874,9 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                         break
             if flag == 1:
                 continue
-            
-            #解决torch.jit.annotations误报问题，API-torch.jit.annotations废弃，但是模块-torch.jit.annotations还存在，所有from .import annotations 也会被误报
+
+            # 解决torch.jit.annotations误报问题，API-torch.jit.annotations废弃，但是模块
+            # -torch.jit.annotations还存在，所有from .import annotations 也会被误报
             if module in target_dir:
                 continue
 
@@ -777,25 +885,25 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
             else:
                 logging.info(f"{proj} is not compatible with {target_library}{target_version}-The {module} is deprecated.")
             res = True
-            return res 
-    #2.2、检查功能代码部分是否兼容
-    #检测客户端代码是否使用了废弃的API
+            return res
+    # 2.2、检查功能代码部分是否兼容
+    # 检测客户端代码是否使用了废弃的API
     for api in apis_full_name:
         flag3 = 0
         for i in s:
             if i.split(".")[-1] == api.split(".")[-1]:
                 flag3 = 1
                 break
-        if flag3 == 0 and not api.endswith("__init__" ):
-            continue    #API匹配误判，跳过
+        if flag3 == 0 and not api.endswith("__init__"):
+            continue  # API匹配误判，跳过
         parts = api.split(".")
         new_api = '.'.join(parts[1:])
 
         if api.endswith("split") or api.endswith("values") or api.endswith("key"):
-            continue      #python内置的函数，跳过
+            continue  # python内置的函数，跳过
 
-        #检测客户端代码是否使用了废弃的函数，类，方法等
-        if new_api.endswith("__init__"):   #检测客户端代码是否使用了废弃的类
+        # 检测客户端代码是否使用了废弃的函数，类，方法等
+        if new_api.endswith("__init__"):  # 检测客户端代码是否使用了废弃的类
             class_api = new_api.replace('.__init__', '')
             flag3 = 0
             if target_project == proj:
@@ -804,7 +912,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                         flag3 = 1
                         break
             if flag3 == 0:
-                continue    #API匹配误判，跳过
+                continue  # API匹配误判，跳过
             # 修复检测api位置改变但是通过装饰器是的api还可以正常使用失败问题
             if f"{target_library_call_module}.{class_api}" in deprecated_classes:
                 xx = api_full_to_short_mapping[api]
@@ -812,37 +920,50 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                     continue
                 if xx in target_api_dict["api_usage"]:
                     continue
-                start_class_decorator_path = start_library_path + slash + transform_and_remove_last_segment(class_api) + '.py'
+                start_class_decorator_path = (
+                    start_library_path + slash
+                    + transform_and_remove_last_segment(class_api) + '.py'
+                )
                 if not isinstance(start_api_dict['classes'][f"{target_library_call_module}.{class_api}"], str):
-                    start_class_decorator = extract_lines(start_class_decorator_path, start_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"]-1)
+                    start_class_decorator = extract_lines(start_class_decorator_path, start_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"] - 1)
                 else:
                     start_class_decorator = "x"
                 api_last_name = class_api.split(".")[-1]
                 flag = 0
                 for i in target_api_dict["classes"].keys():
                     if api_last_name in i[0]:
-                        target_class_decorator_path = source_root + slash + transform_and_remove_last_segment(i[0]) + '.py'
+                        target_class_decorator_path = (
+                            source_root + slash
+                            + transform_and_remove_last_segment(i[0]) + '.py'
+                        )
                         if not isinstance(target_api_dict['classes'][f"{target_library_call_module}.{class_api}"], str):
-                            target_class_decorator = extract_lines(target_class_decorator_path, target_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"]-1)
+                            target_class_decorator = extract_lines(target_class_decorator_path, target_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"] - 1)
                         else:
                             target_class_decorator = "x"
-                        #print()
-                        if start_class_decorator.startswith('@') and target_class_decorator.startswith('@'):
-                            if start_class_decorator== target_class_decorator:
+                        # print()
+                        if (
+                            start_class_decorator.startswith('@')
+                            and target_class_decorator.startswith('@')
+                        ):
+                            if start_class_decorator == target_class_decorator:
                                 flag = 1
                                 break
                 if flag == 1:
                     continue
-                
-                 # 解决误报的问题，可以查找__init__.py文件中是否有定义
+
+                # 解决误报的问题，可以查找__init__.py文件中是否有定义
                 flag = 0
                 for xx in s:
                     if xx.endswith(f".{class_api.split('.')[-1]}"):
-                        #xx = xx.replace(target_library_call_module+'.', '')
+                        # xx = xx.replace(target_library_call_module+'.', '')
                         parts = xx.split(".")
                         xx = '.'.join(parts[1:])
                         if "." in xx:
-                            init_file_path = target_library_path + slash + transform_and_remove_last_segment(xx) + slash + '__init__.py'
+                            init_file_path = (
+                                target_library_path + slash
+                                + transform_and_remove_last_segment(xx) + slash
+                                + '__init__.py'
+                            )
                         else:
                             init_file_path = target_library_path + slash + '__init__.py'
                         if os.path.exists(init_file_path):
@@ -853,11 +974,15 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                                     break
                             if flag == 1:
                                 break
-                            #解决*的问题
+                            # 解决*的问题
                             for ii in import_api_names:
                                 if ii.endswith(f".*"):
-                                    related_file_path = target_library_path + slash + transform_and_remove_last_segment(xx) + slash + transform_and_remove_last_segment(ii) + '.py'
-                                    #print(related_file_path)
+                                    related_file_path = (
+                                        target_library_path + slash
+                                        + transform_and_remove_last_segment(xx) + slash
+                                        + transform_and_remove_last_segment(ii) + '.py'
+                                    )
+                                    # print(related_file_path)
                                     if os.path.exists(related_file_path):
                                         related_api_names = extract_classes_from_file(related_file_path)
                                         if f"{class_api.split('.')[-1]}" in related_api_names:
@@ -868,9 +993,12 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 if flag == 1:
                     continue
                 # 解决误报的问题，可以查找import中是否有定义
-                #解决_tqdm_notebook
+                # 解决_tqdm_notebook
                 flag = 0
-                api_path = source_root + slash + transform_and_remove_last_segment(class_api) + '.py'
+                api_path = (
+                    source_root + slash + transform_and_remove_last_segment(class_api)
+                    + '.py'
+                )
                 if os.path.exists(api_path):
                     import_api_names = paths_of_import_file(api_path)
                     class_api_last_name = class_api.split(".")[-1]
@@ -891,15 +1019,14 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 if flag == 1:
                     continue
 
-
                 if target_project == proj:
                     logging.info(f"{target_project} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                 else:
                     logging.info(f"{target_project}{target_proj_dependency[target_project]} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                 res = True
                 return res
-            else:                                             #检测客户端代码是否使用了废弃的属性
-                #获取这个类从起始版本到目标版本废弃的属性
+            else:  # 检测客户端代码是否使用了废弃的属性
+                # 获取这个类从起始版本到目标版本废弃的属性
                 if f"{target_library_call_module}.{class_api}" in start_api_dict["classes"]:
                     if "attributes" in start_api_dict["classes"][f"{target_library_call_module}.{class_api}"]:
                         start_attribute_set = set(start_api_dict["classes"][f"{target_library_call_module}.{class_api}"]['attributes'])
@@ -914,14 +1041,14 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                         target_attribute_set = set()
                 else:
                     target_attribute_set = set()
-                
+
                 deprecated_attribute = start_attribute_set - target_attribute_set
-                
-                #获取客户端代码调用了的这个类的属性
+
+                # 获取客户端代码调用了的这个类的属性
                 filename = ''
                 class_string = ''
                 class_str = extract_after_last_dot(class_api)
-                #print(class_str)
+                # print(class_str)
                 for key in api_calls_dict:
                     if class_str in key:
                         class_string = api_calls_dict[key]
@@ -932,7 +1059,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                     proj_class_attribute = get_attributes_from_file(filename, class_string)
                 else:
                     proj_class_attribute = None
-                
+
                 if proj_class_attribute is not None:
                     for attribute in proj_class_attribute:
                         if attribute in deprecated_attribute:
@@ -942,7 +1069,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                                 logging.info(f"{target_project}{target_proj_dependency[target_project]} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{class_api}.{attribute} is deprecated.")
                             res = True
                             return res
-                #print(proj_class_attribute)
+                # print(proj_class_attribute)
         else:
             if api in deprecated_functions:
                 xx = api_full_to_short_mapping[api]
@@ -951,29 +1078,38 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 if xx in target_api_dict["api_usage"]:
                     continue
                 # 修复检测api位置改变但是通过装饰器是的api还可以正常使用失败问题
-                start_functions_decorator_path = start_library_path + slash + transform_and_remove_last_segment(new_api) + '.py'
+                start_functions_decorator_path = (
+                    start_library_path + slash
+                    + transform_and_remove_last_segment(new_api) + '.py'
+                )
                 if not isinstance(start_api_dict['functions'][api], str):
-                    start_functions_decorator = extract_lines(start_functions_decorator_path, start_api_dict['functions'][api]["lineno"]-1)
+                    start_functions_decorator = extract_lines(start_functions_decorator_path, start_api_dict['functions'][api]["lineno"] - 1)
                 else:
                     start_functions_decorator = "x"
                 api_last_name = new_api.split(".")[-1]
                 flag = 0
                 for i in target_api_dict["functions"].items():
                     if i[0].endswith(f".{api_last_name}"):
-                        target_functions_decorator_path = source_root + slash + transform_and_remove_last_segment(i[0]) + '.py'
+                        target_functions_decorator_path = (
+                            source_root + slash
+                            + transform_and_remove_last_segment(i[0]) + '.py'
+                        )
                         if not isinstance(target_api_dict['functions'][i[0]], str):
-                            target_functions_decorator = extract_lines(target_functions_decorator_path, target_api_dict['functions'][i[0]]["lineno"]-1)
+                            target_functions_decorator = extract_lines(target_functions_decorator_path, target_api_dict['functions'][i[0]]["lineno"] - 1)
                         else:
                             target_functions_decorator = "x"
 
                         flag2 = 0
                         if target_functions_decorator is not None:
-                            #print(target_functions_decorator)
+                            # print(target_functions_decorator)
                             if target_functions_decorator.startswith('@'):
                                 decorator_prefix = re.findall(r'["\'](.*?)["\']', target_functions_decorator)
                                 for j in s:
                                     if len(decorator_prefix) > 0:
-                                        if j.endswith(api_last_name) and j.startswith(decorator_prefix[0]):
+                                        if (
+                                            j.endswith(api_last_name)
+                                            and j.startswith(decorator_prefix[0])
+                                        ):
                                             flag = 1
                                             flag2
                                             break
@@ -992,11 +1128,23 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                             break
                         parts = xx.split(".")
                         xx = '.'.join(parts[1:])
-                        #print(xx)
+                        # print(xx)
                         if "." in xx:
-                            pyi_file_path = target_library_path + slash + transform_and_remove_last_segment(xx) + slash + '__init__.pyi'
-                            init_file_path = target_library_path + slash + transform_and_remove_last_segment(xx) + slash + '__init__.py'
-                            init_file_path_2 = target_library_path + slash + transform_and_remove_last_segment(transform_and_remove_last_segment(xx)) + slash + '__init__.py'
+                            pyi_file_path = (
+                                target_library_path + slash
+                                + transform_and_remove_last_segment(xx) + slash
+                                + '__init__.pyi'
+                            )
+                            init_file_path = (
+                                target_library_path + slash
+                                + transform_and_remove_last_segment(xx) + slash
+                                + '__init__.py'
+                            )
+                            init_file_path_2 = (
+                                target_library_path + slash
+                                + transform_and_remove_last_segment(transform_and_remove_last_segment(xx))
+                                + slash + '__init__.py'
+                            )
                         else:
                             pyi_file_path = target_library_path + slash + '__init__.pyi'
                             init_file_path = target_library_path + slash + '__init__.py'
@@ -1007,7 +1155,7 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                         if os.path.exists(pyi_file_path):
                             function_names = extract_function_defs_from_file(pyi_file_path)
                             import_api_names = paths_of_import_file(pyi_file_path)
-                            
+
                             for ii in import_api_names:
                                 if ii.endswith(new_api_end):
                                     flag1 = 1
@@ -1015,10 +1163,10 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                             if flag1 == 1:
                                 break
 
-                            #pyi文件中from import可以改变调用形式，需要进一步处理，已处理2024-12-6
+                            # pyi文件中from import可以改变调用形式，需要进一步处理，已处理2024-12-6
                             if new_api_end in function_names:
                                 flag1 = 1
-                                break 
+                                break
 
                         if os.path.exists(init_file_path):
                             init_import_api_names = paths_of_import_file(init_file_path)
@@ -1028,14 +1176,14 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                                     break
                             if flag1 == 1:
                                 break
-                        
+
                         if os.path.exists(init_file_path_2):
                             init_import_api_names = paths_of_import_file(init_file_path_2)
                             for ii in init_import_api_names:
                                 if ii.endswith(new_api_end):
                                     flag1 = 1
                                     break
-                        if flag1 == 1:  
+                        if flag1 == 1:
                             break
 
                         if os.path.exists(pyi_file_path_2):
@@ -1058,9 +1206,12 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 if flag1 == 1:
                     continue
 
-                #解决torch.nn.functional.pad误报问题，可以查找torch.nn.functional.pyi 是否有def pad
+                # 解决torch.nn.functional.pad误报问题，可以查找torch.nn.functional.pyi 是否有def pad
                 flag1 = 0
-                pyi_file_path4 = target_library_path + slash + transform_and_remove_last_segment(new_api) + '.pyi'
+                pyi_file_path4 = (
+                    target_library_path + slash
+                    + transform_and_remove_last_segment(new_api) + '.pyi'
+                )
                 if os.path.exists(pyi_file_path4):
                     function_names = extract_function_defs_from_file(pyi_file_path4)
                     for function_name in function_names:
@@ -1070,14 +1221,17 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 if flag1 == 1:
                     continue
 
-                #解决匹配错误问题，可能匹配到测试代码中，跳过
+                # 解决匹配错误问题，可能匹配到测试代码中，跳过
                 if "testing" in new_api:
                     continue
 
                 # 解决误报的问题，可以查找import中是否有定义
-                #解决_tqdm_notebook
-                flag = 0            
-                api_path = source_root + slash + transform_and_remove_last_segment(new_api) + '.py'
+                # 解决_tqdm_notebook
+                flag = 0
+                api_path = (
+                    source_root + slash + transform_and_remove_last_segment(new_api)
+                    + '.py'
+                )
                 if os.path.exists(api_path):
                     import_api_names = paths_of_import_file(api_path)
                     for x in import_api_names:
@@ -1097,7 +1251,6 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 if flag == 1:
                     continue
 
-
                 if target_project == proj:
                     logging.info(f"{target_project} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                 else:
@@ -1107,21 +1260,22 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
             elif api in deprecated_methods:
                 if target_library_call_module + "." + new_api.split(".")[-1] in s:
                     continue
-                #解决figure.Figure.colorbar误报问题，因为类Figure继承于FigureBase，而FigureBase中有colorbar方法，所以需要增加基类的判断
+                # 解决figure.Figure.colorbar误报问题，因为类Figure继承于FigureBase，而FigureBase中有
+                # colorbar方法，所以需要增加基类的判断
                 flag1 = 0
-                method_last_name = new_api.split(".")[-1] 
+                method_last_name = new_api.split(".")[-1]
                 if api.replace(f".{method_last_name}", '') in target_api_dict["classes"].keys():
                     class_definition = extract_lines(target_library_path + slash + transform_and_remove_last_segment(new_api.replace(f".{method_last_name}", '')) + '.py', target_api_dict["classes"][api.replace(f".{method_last_name}", '')]["lineno"])
                 else:
                     class_definition = "()"
-                #用正则表达式匹配类的基类
+                # 用正则表达式匹配类的基类
                 pattern = r'class\s+\w+\s*\(([^)]+)\)'
                 match = re.search(pattern, class_definition)
                 if match:
                     base_class = match.group(1).strip()
                 else:
                     base_class = None
-                
+
                 for key in target_api_dict["methods"]:
                     if base_class is not None:
                         if key.endswith(f".{method_last_name}") and base_class in key:
@@ -1142,93 +1296,137 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                 else:
                     logging.info(f"{target_project}{target_proj_dependency[target_project]} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                 res = True
-                return res 
-        
-        
-        #检测类和函数的装饰器是否改变，即使代码路径没有改变，但是装饰器改变了导致代码不兼容
+                return res
+
+        # 检测类和函数的装饰器是否改变，即使代码路径没有改变，但是装饰器改变了导致代码不兼容
         if new_api.endswith("__init__") and target_library == 'tensorflow':
             class_api = new_api.replace('.__init__', '')
-            start_class_decorator_path = start_library_path + slash + transform_and_remove_last_segment(class_api) + '.py'
-            start_class_decorator = extract_lines(start_class_decorator_path, start_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"]-1)
+            start_class_decorator_path = (
+                start_library_path + slash
+                + transform_and_remove_last_segment(class_api) + '.py'
+            )
+            start_class_decorator = extract_lines(start_class_decorator_path, start_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"] - 1)
 
-            target_class_decorator_path = target_library_path + slash + transform_and_remove_last_segment(class_api) + '.py'
+            target_class_decorator_path = (
+                target_library_path + slash
+                + transform_and_remove_last_segment(class_api) + '.py'
+            )
             if f"{target_library_call_module}.{class_api}" in target_api_dict["classes"]:
-                target_class_decorator = extract_lines(target_class_decorator_path, target_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"]-1)
+                target_class_decorator = extract_lines(target_class_decorator_path, target_api_dict['classes'][f"{target_library_call_module}.{class_api}"]["lineno"] - 1)
             else:
                 target_class_decorator = None
-            
-            if start_class_decorator and start_class_decorator.startswith('@tf_export') and target_class_decorator and target_class_decorator.startswith('@tf_export'):         
+
+            if (
+                start_class_decorator
+                and start_class_decorator.startswith('@tf_export')
+                and target_class_decorator
+                and target_class_decorator.startswith('@tf_export')
+            ):
                 start_matches = re.findall(r'["\'](.*?)["\']', start_class_decorator)
                 target_matches = re.findall(r'["\'](.*?)["\']', target_class_decorator)
                 if target_matches == start_matches:
                     pass
-                elif not bool(set(start_matches).issubset(set(target_matches))) and target_version.startswith("2.") and start_version.startswith("1."):
+                elif (
+                    not bool(set(start_matches).issubset(set(target_matches)))
+                    and target_version.startswith("2.")
+                    and start_version.startswith("1.")
+                ):
                     if target_project == proj:
                         logging.info(f"{target_project} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                     else:
                         logging.info(f"{target_project}{target_proj_dependency[target_project]} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                     res = True
                     return res
-            elif start_class_decorator == "" and target_class_decorator and target_class_decorator.startswith('@tf_export'):
-                if "v1=[" in target_class_decorator and target_version.startswith("2.") and start_version.startswith("1."):
+            elif (
+                start_class_decorator == ""
+                and target_class_decorator
+                and target_class_decorator.startswith('@tf_export')
+            ):
+                if (
+                    "v1=[" in target_class_decorator
+                    and target_version.startswith("2.")
+                    and start_version.startswith("1.")
+                ):
                     if target_project == proj:
                         logging.info(f"{target_project} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                     else:
                         logging.info(f"{target_project}{target_proj_dependency[target_project]} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                     res = True
                     return res
-            #print(target_class_decorator)
+            # print(target_class_decorator)
         elif target_library == 'tensorflow':
-            start_function_decorator_path = target_library_path + slash +transform_and_remove_last_segment(new_api) + '.py'
+            start_function_decorator_path = (
+                target_library_path + slash + transform_and_remove_last_segment(new_api)
+                + '.py'
+            )
             try:
-                start_function_decorator = extract_lines(start_function_decorator_path, start_api_dict['functions'][api]["lineno"]-1)
+                start_function_decorator = extract_lines(start_function_decorator_path, start_api_dict['functions'][api]["lineno"] - 1)
             except:
                 continue
 
-            target_function_decorator_path = target_library_path + slash +transform_and_remove_last_segment(new_api) + '.py'
+            target_function_decorator_path = (
+                target_library_path + slash + transform_and_remove_last_segment(new_api)
+                + '.py'
+            )
             try:
-                target_function_decorator = extract_lines(target_function_decorator_path, target_api_dict['functions'][api]["lineno"]-1)
+                target_function_decorator = extract_lines(target_function_decorator_path, target_api_dict['functions'][api]["lineno"] - 1)
             except:
                 continue
-            
-            if start_function_decorator and start_function_decorator.startswith('@tf_export') and target_function_decorator and target_function_decorator.startswith('@tf_export'):   
+
+            if (
+                start_function_decorator
+                and start_function_decorator.startswith('@tf_export')
+                and target_function_decorator
+                and target_function_decorator.startswith('@tf_export')
+            ):
                 start_matches = re.findall(r'["\'](.*?)["\']', start_function_decorator)
                 target_matches = re.findall(r'["\'](.*?)["\']', target_function_decorator)
-                #print(start_matches)
-                #print(target_matches)
+                # print(start_matches)
+                # print(target_matches)
                 if target_matches == start_matches:
                     pass
-                elif not bool(set(start_matches).issubset(set(target_matches))) and target_version.startswith("2.") and start_version.startswith("1."):
+                elif (
+                    not bool(set(start_matches).issubset(set(target_matches)))
+                    and target_version.startswith("2.")
+                    and start_version.startswith("1.")
+                ):
                     logging.info(f"{target_project} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                     res = True
                     return res
-            elif start_function_decorator == "" and target_function_decorator and target_function_decorator.startswith('@tf_export'):
-                if "v1=[" in target_function_decorator and target_version.startswith("2.") and start_version.startswith("1."):
+            elif (
+                start_function_decorator == ""
+                and target_function_decorator
+                and target_function_decorator.startswith('@tf_export')
+            ):
+                if (
+                    "v1=[" in target_function_decorator
+                    and target_version.startswith("2.")
+                    and start_version.startswith("1.")
+                ):
                     logging.info(f"{target_project} is not compatible with {target_library}{target_version}-The {target_library_call_module}.{new_api} is deprecated.")
                     res = True
                     return res
-        
-        
-        #参数兼容性检查
-        #if new_api in start_api_param_dict and new_api in target_api_param_dict and not new_api.endswith("__init__"):
+
+        # 参数兼容性检查
+        # if new_api in start_api_param_dict and new_api in target_api_param_dict and not new_api.endswith("__init__"):
         if api in start_api_dict['functions'] and api in target_api_dict['functions']:
-            #print(new_api)
+            # print(new_api)
             start_param = start_api_dict['functions'][api]['parameter']
             target_param = target_api_dict['functions'][api]['parameter']
-            
+
             result = None
             if api in target_api_dict['functions']:
-                #print("***********************")
+                # print("***********************")
                 if os.path.exists(f"{target_library_path}{slash}{transform_and_remove_last_segment(new_api)}.py"):
-                    result = extract_lines(f"{target_library_path}{slash}{transform_and_remove_last_segment(new_api)}.py", target_api_dict['functions'][api]["lineno"]-1)
+                    result = extract_lines(f"{target_library_path}{slash}{transform_and_remove_last_segment(new_api)}.py", target_api_dict['functions'][api]["lineno"] - 1)
                 else:
                     result = None
             if result is not None and result.startswith('@parse_args'):
                 parse_args = re.findall(r'["\']([^"\']*)["\']', result)
-                #print(parse_args)
+                # print(parse_args)
             else:
                 parse_args = []
-            
+
             try:
                 if new_api.endswith("__init__") or new_api.endswith("__default_init__"):
                     actual_usage = api_paras_map[new_api.split('.')[-2]]
@@ -1245,8 +1443,6 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
                     logging.info(f"{target_project}{target_proj_dependency[target_project]} is not compatible with {target_library}{target_version}--（参数不兼容）{new_api}")
                 res = True
                 return res
-           
-        
         '''
         #检测API的实现代码是否发生变更
         if new_api.endswith("__init__") or new_api.endswith("__default_init__"):
@@ -1289,5 +1485,5 @@ def is_target_library_code_conflict(proj_path, target_project, target_library, s
         logging.info(f"{target_project} is compatible with {target_library}{target_version}")
     else:
         logging.info(f"{target_project}{target_proj_dependency[target_project]} is compatible with {target_library}{target_version}")
-        
+
     return res

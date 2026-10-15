@@ -2,6 +2,7 @@ import ast
 import os
 from .lib_class_attribute_extraction import get_class_attributes_from_file
 
+
 def get_default_value(node):
     """
     Helper function to get the string representation of the default value of a parameter.
@@ -16,6 +17,7 @@ def get_default_value(node):
         except Exception:
             return str(node)
 
+
 def extract_info_from_py_file(file_path, root_dir):
     res = {"functions": {}, "classes": {}, "methods": {}, "global_vars": []}
     try:
@@ -27,14 +29,14 @@ def extract_info_from_py_file(file_path, root_dir):
                 file_content = file.read()
         except:
             return {"functions": {}, "classes": {}, "methods": {}, "global_vars": []}
-    
+
     functions = {}
     classes = {}
     methods = {}
     global_vars = []
 
     api_params_dict = {}
-    
+
     # Parse the Python file content to AST
     try:
         tree = ast.parse(file_content, filename=file_path)
@@ -52,7 +54,7 @@ def extract_info_from_py_file(file_path, root_dir):
             fstart_line = node.lineno
             res["functions"][f"{root_dir.split('/')[-1]}.{dotted_path}.{node.name}"] = {}
             res["functions"][f"{root_dir.split('/')[-1]}.{dotted_path}.{node.name}"]["lineno"] = fstart_line
-            
+
             # Extract function parameters (with default values if any)
             params = []
             defaults = node.args.defaults  # Get the default values for parameters
@@ -62,7 +64,7 @@ def extract_info_from_py_file(file_path, root_dir):
             # Handle *args or *shapes - placed first
             if varargs:
                 params.append(f"*{varargs.arg}")
-            
+
             # Regular positional parameters (without default values)
             regular_params = node.args.args[:len(node.args.args) - len(defaults)]
             for param in regular_params:
@@ -73,14 +75,15 @@ def extract_info_from_py_file(file_path, root_dir):
                 default_value = defaults[i]
                 default_value_str = get_default_value(default_value)
                 params.append(f"{param.arg}={default_value_str}")
-            
+
             # Handle **kwargs - placed last
             if kwargs:
                 params.append(f"**{kwargs.arg}")
-            
-            # Join parameters into a single string, formatted like (param1, param2=default)
+
+            # Join parameters into a single string, formatted like (param1,
+            # param2=default)
             params_str = ', '.join(params)
-            res["functions"][f"{root_dir.split('/')[-1]}.{dotted_path}.{node.name}"]["parameter"] = f"({params_str})" 
+            res["functions"][f"{root_dir.split('/')[-1]}.{dotted_path}.{node.name}"]["parameter"] = f"({params_str})"
         # Collect class definitions
         elif isinstance(node, ast.ClassDef):
             class_name = f"{dotted_path}.{node.name}"
@@ -93,7 +96,7 @@ def extract_info_from_py_file(file_path, root_dir):
             for class_node in node.body:
                 if isinstance(class_node, ast.FunctionDef):
                     method_start = class_node.lineno
-                    #method_end = max(getattr(child, 'lineno', method_start) for child in ast.walk(class_node))
+                    # method_end = max(getattr(child, 'lineno', method_start) for child in ast.walk(class_node))
                     res["methods"][f"{root_dir.split('/')[-1]}.{class_name}.{class_node.name}"] = {}
                     res["methods"][f"{root_dir.split('/')[-1]}.{class_name}.{class_node.name}"]["lineno"] = method_start
 
@@ -106,7 +109,7 @@ def extract_info_from_py_file(file_path, root_dir):
                     # Handle *args or *shapes - placed first
                     if varargs:
                         params.append(f"*{varargs.arg}")
-                    
+
                     # Regular positional parameters (without default values)
                     regular_params = class_node.args.args[:len(class_node.args.args) - len(defaults)]
                     for param in regular_params:
@@ -121,26 +124,23 @@ def extract_info_from_py_file(file_path, root_dir):
                     # Handle **kwargs - placed last
                     if kwargs:
                         params.append(f"**{kwargs.arg}")
-                    
-                    # Join parameters into a single string, formatted like (param1, param2=default)
+
+                    # Join parameters into a single string, formatted like (param1,
+                    # param2=default)
                     params_str = ', '.join(params)
                     res["methods"][f"{root_dir.split('/')[-1]}.{class_name}.{class_node.name}"]["parameter"] = f"({params_str})"
         # Collect global variables (only simple assignments)
         elif isinstance(node, ast.Assign):
             for target in node.targets:
                 if isinstance(target, ast.Name):
-                    #print(f"{dotted_path}.{target.id}")
+                    # print(f"{dotted_path}.{target.id}")
                     res["global_vars"].append(f"{root_dir.split('/')[-1]}.{dotted_path}.{target.id}")
-    
+
     return res
 
+
 def extract_from_directory(directory):
-    results = {
-        "functions": {},
-        "classes": {},
-        "methods": {},
-        "global_vars": []
-    }
+    results = {"functions": {}, "classes": {}, "methods": {}, "global_vars": []}
     api_params_dict = {}
 
     for root, _, files in os.walk(directory):
@@ -148,7 +148,7 @@ def extract_from_directory(directory):
             if file.endswith('.py'):
                 file_path = os.path.join(root, file)
                 res = extract_info_from_py_file(file_path, directory)
-                #print(directory)
+                # print(directory)
                 results["functions"].update(res["functions"])
                 results["classes"].update(res["classes"])
                 results["methods"].update(res["methods"])
