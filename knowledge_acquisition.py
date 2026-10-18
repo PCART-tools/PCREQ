@@ -20,38 +20,12 @@ from packaging.tags import compatible_tags, cpython_tags
 from packaging.utils import parse_wheel_filename
 from packaging.version import parse as parse_version
 
-from call_graph.get_FDG import (
-    download_from_data,
-    get_FDG_from_requirements,
-    get_library_constraint_from_metadata,
-    get_sub_graph,
-    setup_path_1,
-    try_read_constraint_json,
-)
+from call_graph.get_FDG import download_from_data, get_FDG_from_requirements, get_library_constraint_from_metadata, get_sub_graph, setup_path_1, try_read_constraint_json
 from extraction.getCall import get_all_used_api
-from extraction.lib_module_and_package_extraction import (
-    get_python_modules_and_packages_from_dir,
-    get_python_modules_and_packages_from_init,
-)
+from extraction.lib_module_and_package_extraction import get_python_modules_and_packages_from_dir, get_python_modules_and_packages_from_init
 from extraction.library_api_and_module import extract_from_directory
-from utils.kb_report import (
-    append_status as kb_append_status,
-    generate as kb_report_generate,
-)
-from utils.util import (
-    cleanup_temp_files,
-    detect_call_modules,
-    get_library_call_module,
-    get_proj_dependency_from_requirements,
-    is_version_compat,
-    load_config,
-    norm_pkg,
-    norm_ver,
-    rename_core_keys,
-    resolve_pkg_dir,
-    shortenPath,
-)
-
+from utils.kb_report import append_status as kb_append_status, generate as kb_report_generate
+from utils.util import cleanup_temp_files, detect_call_modules, get_library_call_module, get_proj_dependency_from_requirements, is_version_compat, load_config, norm_pkg, norm_ver, rename_core_keys, resolve_pkg_dir, shortenPath
 
 if (platform.system() == 'Windows'):
     slash = "\\"
@@ -65,6 +39,7 @@ api_path_prefix = ""
 
 _stats = {"downloaded": 0, "failed": 0, "skipped": 0, "crashed": 0}
 
+
 def setup_path(library_path_prefix_pass, constraint_path_prefix_pass, version_path_prefix_pass, api_path_prefix_pass):
     global library_path_prefix, constraint_path_prefix, version_path_prefix, api_path_prefix
     library_path_prefix = library_path_prefix_pass
@@ -72,6 +47,7 @@ def setup_path(library_path_prefix_pass, constraint_path_prefix_pass, version_pa
     version_path_prefix = version_path_prefix_pass
     api_path_prefix = api_path_prefix_pass
     setup_path_1(library_path_prefix, constraint_path_prefix, version_path_prefix, api_path_prefix)
+
 
 def get_available_version(FDG, sub_graph, python_version, target_proj_dependency, target_library, target_version):
     target_library_constraint = get_library_constraint_from_metadata(target_library, target_version, python_version)
@@ -92,8 +68,7 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
             try:
                 condidate_version = version_ls[proj_dependency.lower()][python_version]
             except:
-                logging.warning("Package %s not found in version list for py%s",
-                                proj_dependency.lower(), python_version)
+                logging.warning("Package %s not found in version list for py%s", proj_dependency.lower(), python_version)
             if len(condidate_version) >= 150:
                 condidate_version = condidate_version[-150:]
             elif len(condidate_version) >= 30:
@@ -123,8 +98,7 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
                         condidate_version = version_ls[proj_dependency][python_version]
                         break
             except:
-                logging.warning("Package %s not found in version list (constrained path)",
-                                proj_dependency)
+                logging.warning("Package %s not found in version list (constrained path)", proj_dependency)
             target_ver = target_proj_dependency[proj_dependency]
             target_ver_norm = str(parse_version(target_ver))
             match_idx = None
@@ -149,6 +123,7 @@ def get_available_version(FDG, sub_graph, python_version, target_proj_dependency
             available_versions[i] = sorted_available_versions2[i]
     return available_versions
 
+
 def filter_versions(version_list):
     """Remove versions that fail parse_version (e.g. date-like strings)."""
     result = []
@@ -159,6 +134,7 @@ def filter_versions(version_list):
         except Exception:
             pass
     return result
+
 
 # Point 29: packaging.tags-based wheel compatibility (runtime platform)
 def _is_runtime_compat_wheel(filename, compat_tags):
@@ -196,21 +172,18 @@ def get_compatible_versions(package_name, python_version):
     if "releases" not in response:
         return []
     # Pre-compute runtime platform compatibility tags (Point 29)
-    _ver_major, _ver_minor = (int(python_version.split('.')[0]),
-                               int(python_version.split('.')[1]))
+    _ver_major, _ver_minor = (
+        int(python_version.split('.')[0]), int(python_version.split('.')[1])
+    )
     _compat_tags = set(cpython_tags((_ver_major, _ver_minor)))
     # Point 32: supplement with pure-python any-platform tags from pip
     _interp = f'cp{_ver_major}{_ver_minor}'
-    for t in compatible_tags(python_version=(_ver_major, _ver_minor),
-                              interpreter=_interp):
+    for t in compatible_tags(python_version=(_ver_major, _ver_minor), interpreter=_interp):
         if '-none-any' in str(t):
             _compat_tags.add(t)
     for version, files in response["releases"].items():
         # Point 29: skip versions with no runtime-compatible artifact
-        if not any(f.get("packagetype") == "sdist"
-                   or _is_runtime_compat_wheel(f.get("filename", ""),
-                                                _compat_tags)
-                   for f in files if f):
+        if not any(f.get("packagetype") == "sdist" or _is_runtime_compat_wheel(f.get("filename", ""), _compat_tags) for f in files if f):
             continue
         for file_info in files:
             if file_info.get("python_version"):
@@ -220,9 +193,14 @@ def get_compatible_versions(package_name, python_version):
                         if rp is None or _py_version_is_compatible(python_version, rp):
                             compatible_versions.append(version)
                             break
-                    elif file_info["python_version"] != None and f"py{python_version.split('.')[0]}" in file_info["python_version"]:
+                    elif (
+                        file_info["python_version"] != None
+                        and f"py{python_version.split('.')[0]}" in file_info["python_version"]
+                    ):
                         requires_python = file_info.get("requires_python")
-                        if requires_python is not None and ("=" in requires_python or ">" in requires_python or "<" in requires_python):
+                        if requires_python is not None and ("=" in requires_python
+                                                            or ">" in requires_python
+                                                            or "<" in requires_python):
                             if _py_version_is_compatible(python_version, requires_python):
                                 compatible_versions.append(version)
                                 break
@@ -247,6 +225,7 @@ def get_compatible_versions(package_name, python_version):
 # ---------------------------------------------------------------------------
 # Download infrastructure
 # ---------------------------------------------------------------------------
+
 
 def _wheel_priority(filename, python_version):
     """Return pip-native priority (position in compat tag list, 0 = best).
@@ -428,8 +407,7 @@ def _extract_archive(archive_path, target_dir):
       - only writes ``.py/.pyi/.pyw/.pxi`` + metadata + build configs
       - skips ``.so``, ``.dll``, ``.pyc`` and other non-source files
     """
-    extract_tmp = tempfile.mkdtemp(dir=os.path.dirname(target_dir),
-                                    prefix=".extract-")
+    extract_tmp = tempfile.mkdtemp(dir=os.path.dirname(target_dir), prefix=".extract-")
     # Try tarfile first (auto-detects compression from magic bytes:
     # .tar.gz, .tar.bz2, .tar.xz, .tar, .tgz, .tbz2, .txz)
     try:
@@ -440,15 +418,12 @@ def _extract_archive(archive_path, target_dir):
                 if member.issym() or member.islnk():
                     continue  # skip symlinks/hardlinks (rare, not .py source)
                 if member.isdev():
-                    raise ValueError(
-                        f"Unsafe tar member (device): {member.name}")
+                    raise ValueError(f"Unsafe tar member (device): {member.name}")
                 if member.isfifo():
-                    raise ValueError(
-                        f"Unsafe tar member (fifo): {member.name}")
+                    raise ValueError(f"Unsafe tar member (fifo): {member.name}")
                 target = _safe_target(extract_tmp, member.name)
                 if target is None:
-                    raise ValueError(
-                        f"Path traversal in tar: {member.name}")
+                    raise ValueError(f"Path traversal in tar: {member.name}")
                 extract_ok.append(member)
             # --- Point 6+14: selective per-member extract ------------
             for member in extract_ok:
@@ -462,8 +437,7 @@ def _extract_archive(archive_path, target_dir):
             extract_ok = []
             for info in zf.infolist():
                 if _safe_target(extract_tmp, info.filename) is None:
-                    raise ValueError(
-                        f"Path traversal in zip: {info.filename}")
+                    raise ValueError(f"Path traversal in zip: {info.filename}")
                 extract_ok.append(info)
             # --- Point 6+14: selective per-entry extract -------------
             for info in extract_ok:
@@ -487,15 +461,13 @@ def _extract_archive(archive_path, target_dir):
         src_dir = os.path.join(extract_tmp, items[0])
         for item in os.listdir(src_dir):
             try:
-                shutil.move(os.path.join(src_dir, item),
-                            os.path.join(target_dir, item))
+                shutil.move(os.path.join(src_dir, item), os.path.join(target_dir, item))
             except OSError:
                 pass
     else:
         for item in items:
             try:
-                shutil.move(os.path.join(extract_tmp, item),
-                            os.path.join(target_dir, item))
+                shutil.move(os.path.join(extract_tmp, item), os.path.join(target_dir, item))
             except OSError:
                 pass
     shutil.rmtree(extract_tmp, ignore_errors=True)
@@ -504,6 +476,7 @@ def _extract_archive(archive_path, target_dir):
 # ---------------------------------------------------------------------------
 # Post-processing
 # ---------------------------------------------------------------------------
+
 
 def _promote_purelib(target_dir):
     """Lift .data/purelib/ and .data/platlib/ contents to target_dir root."""
@@ -614,11 +587,8 @@ def _install_source(target_dir, extract_dir, call_module, is_wheel=True):
                 except OSError:
                     _contents = []
                 # Separate subdirectories from files
-                _sub_dirs = sorted(
-                    [c for c in _contents if os.path.isdir(os.path.join(src, c))],
-                    reverse=True)
-                _files = [c for c in _contents
-                          if os.path.isfile(os.path.join(src, c))]
+                _sub_dirs = sorted([c for c in _contents if os.path.isdir(os.path.join(src, c))], reverse=True)
+                _files = [c for c in _contents if os.path.isfile(os.path.join(src, c))]
                 _nested_found = False
                 # Mode A: nested __init__.py in subdirectories
                 for _sub in _sub_dirs:
@@ -636,11 +606,8 @@ def _install_source(target_dir, extract_dir, call_module, is_wheel=True):
                                 pass
                 # Mode B: single-file module (no __init__.py, .py files directly
                 # in this directory, e.g. regex_3/regex.py)
-                if not _nested_found and not os.path.isfile(
-                        os.path.join(src, "__init__.py")):
-                    _has_module_py = any(
-                        f.endswith('.py') and not f.startswith('_')
-                        for f in _files)
+                if not _nested_found and not os.path.isfile(os.path.join(src, "__init__.py")):
+                    _has_module_py = any(f.endswith('.py') and not f.startswith('_') for f in _files)
                     if _has_module_py:
                         _dst_sub = os.path.join(target_dir, call_module)
                         os.makedirs(_dst_sub, exist_ok=True)
@@ -714,10 +681,13 @@ def _install_source(target_dir, extract_dir, call_module, is_wheel=True):
                 pass
     # Move loose metadata files left after _extract_archive flattened
     # a single .dist-info directory (e.g. metadata-only wheels)
-    _METADATA_FILES = ('METADATA', 'PKG-INFO', 'top_level.txt',
-                       'RECORD', 'WHEEL', 'INSTALLER', 'entry_points.txt')
-    _loose_metadata = [item for item in sorted(os.listdir(extract_dir))
-                       if item in _METADATA_FILES]
+    _METADATA_FILES = (
+        'METADATA', 'PKG-INFO', 'top_level.txt', 'RECORD', 'WHEEL', 'INSTALLER',
+        'entry_points.txt'
+    )
+    _loose_metadata = [
+        item for item in sorted(os.listdir(extract_dir)) if item in _METADATA_FILES
+    ]
     if _loose_metadata:
         # _extract_archive flattened a single .dist-info directory.
         # Re-wrap files into a .dist-info so get_library_constraint_from_metadata
@@ -733,8 +703,10 @@ def _install_source(target_dir, extract_dir, call_module, is_wheel=True):
                 except (shutil.Error, OSError):
                     pass
 
-    return any(f.endswith('.py') for _, _, files in os.walk(target_dir) for f in files) \
-           or _has_metadata(target_dir)
+    return (
+        any(f.endswith('.py') for _, _, files in os.walk(target_dir) for f in files)
+        or _has_metadata(target_dir)
+    )
 
 
 def _keep_dist_info(target_dir, package_name, version):
@@ -746,7 +718,6 @@ def _keep_dist_info(target_dir, package_name, version):
 # ---------------------------------------------------------------------------
 # Call module detection
 # ---------------------------------------------------------------------------
-
 
 # Known library → module name mappings where the PyPI name differs from
 # the import name and cannot be detected via top_level.txt.  Used to
@@ -774,8 +745,7 @@ def _py_file_count(entry, target_dir):
     """Count .py files under *entry* if it is a directory; 0 otherwise."""
     epath = os.path.join(target_dir, entry)
     if os.path.isdir(epath):
-        return sum(1 for _, _, fs in os.walk(epath)
-                   for f in fs if f.endswith(".py"))
+        return sum(1 for _, _, fs in os.walk(epath) for f in fs if f.endswith(".py"))
     return 0
 
 
@@ -826,12 +796,10 @@ def _read_top_level_txt(target_dir, package_name):
             for d, entries in all_candidates:
                 d_name = d[:-(len(suffix) + 1)].rsplit("-", 1)[0]
                 if d_name.replace("-", "_") == norm_pkg:
-                    return _select_best_module_name(entries, target_dir,
-                                                    package_name)
+                    return _select_best_module_name(entries, target_dir, package_name)
 
         # Phase C: fallback — first candidate (backward-compatible)
-        return _select_best_module_name(
-            all_candidates[0][1], target_dir, package_name)
+        return _select_best_module_name(all_candidates[0][1], target_dir, package_name)
 
     return None
 
@@ -840,8 +808,10 @@ def _detect_call_module(target_dir, fallback):
     """Auto-detect module from extracted source: __init__.py dir, then matching .py file."""
     if not os.path.isdir(target_dir):
         return fallback
-    _ignore = {"tests", "test", "docs", "examples", "example",
-               "benchmarks", "benchmark", "ez_setup", "scripts", "tools"}
+    _ignore = {
+        "tests", "test", "docs", "examples", "example", "benchmarks", "benchmark",
+        "ez_setup", "scripts", "tools"
+    }
     # Prefer directory whose name matches the expected package
     _fallback_norm = fallback.replace('-', '_')
     for d in sorted(os.listdir(target_dir)):
@@ -901,11 +871,11 @@ def _set_worker_knowledge_path(path):
 
 def _init_worker():
     """Configure logging for Pool worker processes."""
-    import faulthandler, signal
+    import faulthandler
+    import signal
     faulthandler.enable()
     # Dump stacks on SIGUSR1 for manual inspection
-    signal.signal(signal.SIGUSR1,
-                  lambda *_: faulthandler.dump_traceback())
+    signal.signal(signal.SIGUSR1, lambda *_: faulthandler.dump_traceback())
     if _worker_knowledge_path:
         log_file = os.path.join(_worker_knowledge_path, "knowledge_acquisition.log")
         h = logging.FileHandler(log_file, mode='a')
@@ -940,9 +910,7 @@ def _has_metadata(directory):
     except OSError:
         return False
     # Case 1: metadata directory present
-    if any(d.endswith(('.dist-info', '.egg-info'))
-           for d in entries
-           if os.path.isdir(os.path.join(directory, d))):
+    if any(d.endswith(('.dist-info', '.egg-info')) for d in entries if os.path.isdir(os.path.join(directory, d))):
         return True
     # Case 2: flattened metadata (METADATA / PKG-INFO files after
     # _extract_archive flattened a single .dist-info directory)
@@ -978,7 +946,8 @@ def _check_source(td, cm):
         p = os.path.join(td, name)
         if os.path.isdir(p) or os.path.isfile(p + ".py"):
             return True
-    # 3. Check top_level.txt for packages with different module names (e.g. cv2 ← opencv-contrib-python)
+    # 3. Check top_level.txt for packages with different module names (e.g. cv2 ←
+    # opencv-contrib-python)
     for d in os.listdir(td):
         if d.endswith(".dist-info"):
             tl = os.path.join(td, d, "top_level.txt")
@@ -1015,11 +984,13 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             _stats["skipped"] += 1
             return
 
-    if os.path.exists(os.path.join(target_dir, ".no_source")) or (
-            _resolved_lib != norm_name and
-            os.path.exists(os.path.join(f"{library_path_prefix}{_resolved_lib}/"
-                                        f"{_resolved_lib}{norm_ver_name}",
-                                        ".no_source"))):
+    if (
+        os.path.exists(os.path.join(target_dir, ".no_source"))
+        or (
+            _resolved_lib != norm_name
+            and os.path.exists(os.path.join(f"{library_path_prefix}{_resolved_lib}/" f"{_resolved_lib}{norm_ver_name}", ".no_source"))
+        )
+    ):
         _stats["skipped"] += 1
         return
 
@@ -1069,8 +1040,10 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                 tmp_archive = os.path.join(tmpdir, fname)
                 shutil.copy2(existing, tmp_archive)
                 _extract_archive(tmp_archive, extract_dir)
-                if any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files) \
-                   or _has_metadata(extract_dir):
+                if (
+                    any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files)
+                    or _has_metadata(extract_dir)
+                ):
                     artifact_path = existing
                     artifact_is_wheel = _is_wheel
                     _stats["skipped"] += 1
@@ -1092,13 +1065,12 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                                 f.write(chunk)
                                 actual_size += len(chunk)
                         if expected_size > 0 and actual_size != expected_size:
-                            logging.warning("Content-Length mismatch for %s: expected %d, got %d",
-                                            url[:80], expected_size, actual_size)
+                            logging.warning("Content-Length mismatch for %s: expected %d, got %d", url[:80], expected_size, actual_size)
                         downloaded = True
                         break
                 except requests.ConnectionError:
                     if attempt < 2:
-                        time.sleep(2 ** attempt)
+                        time.sleep(2**attempt)
                         continue
                 except OSError:
                     break
@@ -1115,8 +1087,10 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
             tmp_archive = os.path.join(tmpdir, fname)
             shutil.copy2(saved, tmp_archive)
             _extract_archive(tmp_archive, extract_dir)
-            if any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files) \
-               or _has_metadata(extract_dir):
+            if (
+                any(f.endswith('.py') for _, _, files in os.walk(extract_dir) for f in files)
+                or _has_metadata(extract_dir)
+            ):
                 artifact_path = saved
                 artifact_is_wheel = _is_wheel
                 break
@@ -1134,16 +1108,21 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
         if _install_source(target_dir, extract_dir, call_module, artifact_is_wheel):
             detected = _read_top_level_txt(target_dir, package_name)
             if detected:
-                if os.path.isdir(os.path.join(target_dir, detected)) or \
-                   os.path.isfile(os.path.join(target_dir, detected + ".py")):
+                if (
+                    os.path.isdir(os.path.join(target_dir, detected))
+                    or os.path.isfile(os.path.join(target_dir, detected + ".py"))
+                ):
                     call_module = detected
-            if not os.path.isdir(os.path.join(target_dir, call_module)) and \
-               not os.path.isfile(os.path.join(target_dir, call_module + ".py")):
+            if (
+                not os.path.isdir(os.path.join(target_dir, call_module))
+                and not os.path.isfile(os.path.join(target_dir, call_module + ".py"))
+            ):
                 call_module = _detect_call_module(target_dir, call_module)
             _has_valid_module = (
-                os.path.isdir(os.path.join(target_dir, call_module)) or
-                os.path.isfile(os.path.join(target_dir, call_module + ".py")) or
-                os.path.isfile(os.path.join(target_dir, "__init__.py")) or  # flat package
+                os.path.isdir(os.path.join(target_dir, call_module))
+                or os.path.isfile(os.path.join(target_dir, call_module + ".py"))
+                or os.path.isfile(os.path.join(target_dir, "__init__.py"))
+                or  # flat package
                 _has_metadata(target_dir)  # metadata-only compiled extension
             )
             if not _has_valid_module:
@@ -1167,15 +1146,13 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                     for _f in _files:
                         if _f.endswith('.py'):
                             try:
-                                _py_total += os.path.getsize(
-                                    os.path.join(_root, _f))
+                                _py_total += os.path.getsize(os.path.join(_root, _f))
                             except OSError:
                                 pass
                 if _py_total == 0 and not _has_metadata(target_dir):
                     # Remove large .whl/.tar.gz archives
                     for _f in os.listdir(target_dir):
-                        if _f.endswith(('.whl', '.tar.gz', '.zip',
-                                        '.tgz', '.tar.bz2')):
+                        if _f.endswith(('.whl', '.tar.gz', '.zip', '.tgz', '.tar.bz2')):
                             try:
                                 os.remove(os.path.join(target_dir, _f))
                             except OSError:
@@ -1190,8 +1167,7 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
                                     pass
                     if os.path.exists(complete_marker):
                         os.remove(complete_marker)
-                    _mark_no_source(target_dir,
-                                    "all .py files are empty — binary-only package")
+                    _mark_no_source(target_dir, "all .py files are empty — binary-only package")
                     _stats["failed"] += 1
                     _stats["downloaded"] -= 1
                     return
@@ -1205,6 +1181,7 @@ def download_pypi_source(package_name, version=None, python_version="3.7", outpu
 # ---------------------------------------------------------------------------
 # library_version persistence
 # ---------------------------------------------------------------------------
+
 
 def _write_library_version(pkg, python_version, compatible_versions):
     """Atomically update library_version.json with merge semantics.
@@ -1225,8 +1202,7 @@ def _write_library_version(pkg, python_version, compatible_versions):
     if not compatible_versions and data[norm_pkg_name].get(python_version):
         # guard: don't overwrite existing version data with empty list
         # (e.g. when PyPI API is throttled)
-        logging.warning("Keeping existing %d versions for %s, got empty from PyPI",
-                        len(data[norm_pkg_name][python_version]), pkg)
+        logging.warning("Keeping existing %d versions for %s, got empty from PyPI", len(data[norm_pkg_name][python_version]), pkg)
     else:
         data[norm_pkg_name][python_version] = [norm_ver(v) for v in compatible_versions]
     tmp_path = f"{lv_path}.{uuid.uuid4().hex[:8]}.tmp"
@@ -1242,6 +1218,7 @@ def _write_library_version(pkg, python_version, compatible_versions):
 # ---------------------------------------------------------------------------
 # Knowledge extraction
 # ---------------------------------------------------------------------------
+
 
 def _get_all_modules(target_dir, lib):
     """Return all valid module names via :func:`detect_call_modules`.
@@ -1261,8 +1238,14 @@ def extract_fine_grained_knowledge(lib, version):
     target_dir = f"{library_path_prefix}{norm_lib}/{norm_lib}{norm_ver_name}"
     all_modules = _get_all_modules(target_dir, lib)
 
-    merged = {"functions": {}, "classes": {}, "methods": {},
-              "modules": [], "api_usage": [], "global_vars": []}
+    merged = {
+        "functions": {},
+        "classes": {},
+        "methods": {},
+        "modules": [],
+        "api_usage": [],
+        "global_vars": []
+    }
 
     for call_module in all_modules:
         library_path = f"{target_dir}/{call_module}"
@@ -1338,8 +1321,7 @@ def extract_fine_grained_knowledge(lib, version):
 
     # Write .complete sidecar when call module source is trusted
     # (from top_level.txt, known mapping, or auto-detection).
-    if (_read_top_level_txt(target_dir, lib) is not None
-            or lib in _CALL_MODULE_MAP
+    if (_read_top_level_txt(target_dir, lib) is not None or lib in _CALL_MODULE_MAP
             or detect_call_modules(target_dir)):
         with open(out_path + ".complete", "w") as _:
             pass
@@ -1401,10 +1383,7 @@ if __name__ == '__main__':
                 _holder = _lf.read().strip()
         except Exception:
             _holder = "unknown"
-        print(f"ERROR: Knowledge base is locked by another process (PID={_holder}).",
-              f"  KB path: {knowledge_path}",
-              f"  Wait for it to finish, or kill it: kill {_holder}",
-              sep="\n", file=sys.stderr)
+        print(f"ERROR: Knowledge base is locked by another process (PID={_holder}).", f"  KB path: {knowledge_path}", f"  Wait for it to finish, or kill it: kill {_holder}", sep="\n", file=sys.stderr)
         sys.exit(1)
 
     # logging: INFO+ to file, WARNING+ to console
@@ -1423,15 +1402,17 @@ if __name__ == '__main__':
     _error_breakdown = {}  # lib → set of failed versions
     _phase_start_time = time.time()
     logging.info("=" * 70)
-    logging.info("Build: %s | %s %s->%s | py%s | run=%s",
-                 target_project, target_library, start_version, target_version,
-                 python_version, _run_id)
+    logging.info("Build: %s | %s %s->%s | py%s | run=%s", target_project, target_library, start_version, target_version, python_version, _run_id)
     logging.info("=" * 70)
 
     fake_start_proj_dependency = get_proj_dependency_from_requirements(start_requirements_path)
     start_proj_dependency = {}
     for i in fake_start_proj_dependency:
-        if fake_start_proj_dependency[i] == "0.0.0" or fake_start_proj_dependency[i] == "0.0" or fake_start_proj_dependency[i] == "0":
+        if (
+            fake_start_proj_dependency[i] == "0.0.0"
+            or fake_start_proj_dependency[i] == "0.0"
+            or fake_start_proj_dependency[i] == "0"
+        ):
             pass
         else:
             start_proj_dependency[i] = fake_start_proj_dependency[i]
@@ -1469,8 +1450,7 @@ if __name__ == '__main__':
                 compatible_versions = _cached_versions
                 n_vers = len(compatible_versions)
                 _write_library_version(pkg, python_version, compatible_versions)
-                logging.info("Phase 1 [%d/%d]: %s (%d versions) — phase1_done cached",
-                             pkg_idx + 1, pkg_total, pkg, n_vers)
+                logging.info("Phase 1 [%d/%d]: %s (%d versions) — phase1_done cached", pkg_idx + 1, pkg_total, pkg, n_vers)
                 continue
             compatible_versions = get_compatible_versions(pkg, python_version)
             n_vers = len(compatible_versions)
@@ -1489,17 +1469,13 @@ if __name__ == '__main__':
                     logging.exception("download_pypi_source crashed for %s==%s", pkg, ver)
                 _dl_during = _stats["downloaded"] - _dl_before
                 _vers_total = ver_idx + 1
-                if n_vers >= 40 and _dl_during > 0 and (
-                        (_vers_total % 40 == 0 or ver_idx == n_vers - 1)):
-                    logging.info("  %s: %d/%d versions | dl:%d skip:%d",
-                                 pkg, _vers_total, n_vers, _dl_during,
-                                 _vers_total - _dl_during)
+                if n_vers >= 40 and _dl_during > 0 and ((_vers_total % 40 == 0
+                                                         or ver_idx == n_vers - 1)):
+                    logging.info("  %s: %d/%d versions | dl:%d skip:%d", pkg, _vers_total, n_vers, _dl_during, _vers_total - _dl_during)
             # Point 25: filter out .no_source versions from library_version.json
-            _filtered = [v for v in compatible_versions
-                         if not os.path.exists(
-                             f"{library_path_prefix}{resolve_pkg_dir(pkg, library_path_prefix)}/"
-                             f"{resolve_pkg_dir(pkg, library_path_prefix)}{norm_ver(v)}"
-                             "/.no_source")]
+            _filtered = [
+                v for v in compatible_versions if not os.path.exists(f"{library_path_prefix}{resolve_pkg_dir(pkg, library_path_prefix)}/" f"{resolve_pkg_dir(pkg, library_path_prefix)}{norm_ver(v)}" "/.no_source")
+            ]
             _write_library_version(pkg, python_version, _filtered)
             # Mark Phase 1 done for this package+pyVer if all filtered
             # versions have source (guard: only mark complete downloads)
@@ -1516,13 +1492,10 @@ if __name__ == '__main__':
                 _phase1_done.setdefault(_pkg_key, {})[python_version] = True
             _dl_delta = _stats["downloaded"] - _dl_before
             _cached = n_vers - _dl_delta
-            logging.info("Phase 1 [%d/%d]: %s (%d versions) — %d dl, %d cached",
-                         pkg_idx + 1, pkg_total, pkg, n_vers, _dl_delta, _cached)
+            logging.info("Phase 1 [%d/%d]: %s (%d versions) — %d dl, %d cached", pkg_idx + 1, pkg_total, pkg, n_vers, _dl_delta, _cached)
 
         _phase1_elapsed = time.time() - _phase_start_time
-        logging.info("Phase 1 complete: %d packages | dl:%d fail:%d skip:%d crash:%d | %.0fs",
-                     pkg_total, _stats["downloaded"], _stats["failed"],
-                     _stats["skipped"], _stats["crashed"], _phase1_elapsed)
+        logging.info("Phase 1 complete: %d packages | dl:%d fail:%d skip:%d crash:%d | %.0fs", pkg_total, _stats["downloaded"], _stats["failed"], _stats["skipped"], _stats["crashed"], _phase1_elapsed)
         # Persist .phase1_done (same atomic pattern as .phase2_done)
         with open(_phase1_done_path + ".tmp", "w") as _p1_tmp:
             json.dump(_phase1_done, _p1_tmp, sort_keys=True)
@@ -1531,8 +1504,7 @@ if __name__ == '__main__':
 
         # Phase 2: one-hop dependency discovery from known libraries
         _phase_start_time = time.time()
-        logging.info("Phase 2: discovering one-hop dependencies from %d known libs",
-                     len(all_packages))
+        logging.info("Phase 2: discovering one-hop dependencies from %d known libs", len(all_packages))
         try:
             with open(f"{version_path_prefix}library_version.json", 'r') as file:
                 version_ls = json.load(file)
@@ -1552,8 +1524,7 @@ if __name__ == '__main__':
             phase2_done = {}
         for lib in list(all_packages):
             known_versions = set(version_ls.get(lib, {}).get(python_version, []))
-            processed_versions = set(
-                phase2_done.get(lib, {}).get(python_version, []))
+            processed_versions = set(phase2_done.get(lib, {}).get(python_version, []))
             new_versions = known_versions - processed_versions
             if not new_versions:
                 continue
@@ -1574,23 +1545,19 @@ if __name__ == '__main__':
             compatible_versions = get_compatible_versions(dep, python_version)
             n_dep_vers = len(compatible_versions)
             if not compatible_versions:
-                logging.info("Phase 2 [%d/%d]: %s — no compatible versions",
-                             _disc_idx + 1, _disc_total, dep)
+                logging.info("Phase 2 [%d/%d]: %s — no compatible versions", _disc_idx + 1, _disc_total, dep)
                 continue
             # Point 26: skip binary-only transitive deps (no sdist on PyPI)
             _has_sdist = False
             try:
-                _r = requests.get(f"https://pypi.org/pypi/{dep}/json",
-                                  timeout=30)
+                _r = requests.get(f"https://pypi.org/pypi/{dep}/json", timeout=30)
                 if _r.status_code == 200:
                     _urls = _r.json().get("urls", [])
-                    _has_sdist = any(
-                        u.get("packagetype") == "sdist" for u in _urls)
+                    _has_sdist = any(u.get("packagetype") == "sdist" for u in _urls)
             except requests.RequestException:
                 pass
             if not _has_sdist:
-                logging.info("Phase 2 [%d/%d]: %s — binary-only, skipping",
-                             _disc_idx + 1, _disc_total, dep)
+                logging.info("Phase 2 [%d/%d]: %s — binary-only, skipping", _disc_idx + 1, _disc_total, dep)
                 continue
             _dl_before = _stats["downloaded"]
             for ver_idx, ver in enumerate(compatible_versions):
@@ -1610,17 +1577,13 @@ if __name__ == '__main__':
                     logging.error("download_pypi_source crashed for %s==%s", dep, ver)
                 _dl_during = _stats["downloaded"] - _dl_before
                 _vers_total = ver_idx + 1
-                if n_dep_vers >= 40 and _dl_during > 0 and (
-                        _vers_total % 40 == 0 or ver_idx == n_dep_vers - 1):
-                    logging.info("  %s: %d/%d versions | dl:%d skip:%d",
-                                 dep, _vers_total, n_dep_vers,
-                                 _dl_during, _vers_total - _dl_during)
+                if n_dep_vers >= 40 and _dl_during > 0 and (_vers_total % 40 == 0 or
+                                                            ver_idx == n_dep_vers - 1):
+                    logging.info("  %s: %d/%d versions | dl:%d skip:%d", dep, _vers_total, n_dep_vers, _dl_during, _vers_total - _dl_during)
             # Point 25: filter out .no_source versions from library_version.json
-            _filtered = [v for v in compatible_versions
-                         if not os.path.exists(
-                             f"{library_path_prefix}{resolve_pkg_dir(dep, library_path_prefix)}/"
-                             f"{resolve_pkg_dir(dep, library_path_prefix)}{norm_ver(v)}"
-                             "/.no_source")]
+            _filtered = [
+                v for v in compatible_versions if not os.path.exists(f"{library_path_prefix}{resolve_pkg_dir(dep, library_path_prefix)}/" f"{resolve_pkg_dir(dep, library_path_prefix)}{norm_ver(v)}" "/.no_source")
+            ]
             _write_library_version(dep, python_version, _filtered)
             # Mark Phase 1 done for discovered packages too (cross-project cache)
             _dep_done = bool(_filtered)
@@ -1637,11 +1600,9 @@ if __name__ == '__main__':
             all_packages.add(dep)
             _dl_delta = _stats["downloaded"] - _dl_before
             _cached = n_dep_vers - _dl_delta
-            logging.info("Phase 2 [%d/%d]: %s (%d versions) — %d dl, %d cached",
-                         _disc_idx + 1, _disc_total, dep, n_dep_vers, _dl_delta, _cached)
+            logging.info("Phase 2 [%d/%d]: %s (%d versions) — %d dl, %d cached", _disc_idx + 1, _disc_total, dep, n_dep_vers, _dl_delta, _cached)
 
-        logging.info("Phase 2 complete: discovered %d one-hop dependencies | %.0fs",
-                     len(discovered), time.time() - _phase_start_time)
+        logging.info("Phase 2 complete: discovered %d one-hop dependencies | %.0fs", len(discovered), time.time() - _phase_start_time)
         # Persist .phase1_done again (Phase 2 may have added discovered packages)
         with open(_phase1_done_path + ".tmp", "w") as _p1_tmp:
             json.dump(_phase1_done, _p1_tmp, sort_keys=True)
@@ -1696,10 +1657,7 @@ if __name__ == '__main__':
                     if os.path.getsize(json_path) >= 10:
                         with open(json_path, 'r') as f:
                             _legacy_data = json.load(f)
-                        _legacy_modules = set(
-                            m.lower().replace("-", "_")
-                            for m in (_legacy_data.get("modules") or [])
-                        )
+                        _legacy_modules = set(m.lower().replace("-", "_") for m in (_legacy_data.get("modules") or []))
                         if _legacy_modules:
                             _norm_lib_src = resolve_pkg_dir(lib, library_path_prefix)
                             _src_dir = f"{library_path_prefix}{_norm_lib_src}/{_norm_lib_src}{nv}"
@@ -1708,14 +1666,9 @@ if __name__ == '__main__':
                             if _tl:
                                 _public_roots.add(_tl.lower().replace("-", "_"))
                             if lib in _CALL_MODULE_MAP:
-                                _public_roots.add(
-                                    _CALL_MODULE_MAP[lib].lower().replace("-", "_"))
+                                _public_roots.add(_CALL_MODULE_MAP[lib].lower().replace("-", "_"))
                             if _public_roots:
-                                _matched = any(
-                                    any(m == root or m.startswith(root + ".")
-                                        for root in _public_roots)
-                                    for m in _legacy_modules
-                                )
+                                _matched = any(any(m == root or m.startswith(root + ".") for root in _public_roots) for m in _legacy_modules)
                                 if not _matched:
                                     _force_rebuild = True
                 except (json.JSONDecodeError, OSError, KeyError, FileNotFoundError):
@@ -1734,8 +1687,7 @@ if __name__ == '__main__':
                     pass
                 tasks.append((lib, ver))
         pool_size = min(20, cpu_count())
-        logging.info("Phase 3: extracting APIs | %d libs, %d tasks, pool=%d workers",
-                     len(all_library), len(tasks), pool_size)
+        logging.info("Phase 3: extracting APIs | %d libs, %d tasks, pool=%d workers", len(all_library), len(tasks), pool_size)
         _task_total = len(tasks)
         _task_done = 0
         _task_fail = 0
@@ -1750,42 +1702,27 @@ if __name__ == '__main__':
                     _stats["crashed"] += 1
                     _error_breakdown.setdefault(_lib, set()).add(_ver)
                 if _task_done % 50 == 0 or _task_done == _task_total:
-                    logging.info("Phase 3 progress: %d/%d tasks | fail:%d | %.0fs",
-                                 _task_done, _task_total, _task_fail,
-                                 time.time() - _phase_start_time)
+                    logging.info("Phase 3 progress: %d/%d tasks | fail:%d | %.0fs", _task_done, _task_total, _task_fail, time.time() - _phase_start_time)
 
-        logging.info("Phase 3 complete: %d tasks | ok:%d fail:%d | %.0fs",
-                     _task_total, _task_total - _task_fail, _task_fail,
-                     time.time() - _phase_start_time)
+        logging.info("Phase 3 complete: %d tasks | ok:%d fail:%d | %.0fs", _task_total, _task_total - _task_fail, _task_fail, time.time() - _phase_start_time)
         if _error_breakdown:
             logging.warning("=== Error breakdown by library ===")
             for lib in sorted(_error_breakdown):
                 vers = sorted(_error_breakdown[lib], key=parse_version)
-                logging.warning("  %s: %d versions failed: %s",
-                                lib, len(vers), ', '.join(vers[:10]))
+                logging.warning("  %s: %d versions failed: %s", lib, len(vers), ', '.join(vers[:10]))
                 if len(vers) > 10:
                     logging.warning("    ... and %d more", len(vers) - 10)
-        logging.info("Build complete: %d downloaded, %d failed, %d skipped, %d crashed | run=%s",
-                     _stats["downloaded"], _stats["failed"], _stats["skipped"],
-                     _stats["crashed"], _run_id)
+        logging.info("Build complete: %d downloaded, %d failed, %d skipped, %d crashed | run=%s", _stats["downloaded"], _stats["failed"], _stats["skipped"], _stats["crashed"], _run_id)
         logging.info("=" * 70)
     except BaseException:
         try:
             _elapsed = time.time() - _phase_start_time
-            kb_append_status(knowledge_path, {
-                "config": f"{target_project}/{target_library}/{target_version}",
-                "status": "failed",
-                "elapsed": round(_elapsed, 1),
-            })
+            kb_append_status(knowledge_path, {"config": f"{target_project}/{target_library}/{target_version}", "status": "failed", "elapsed": round(_elapsed, 1)})
             kb_report_generate(knowledge_path)
         except Exception:
             logging.exception("Failed to generate KB report")
         raise
     else:
         _elapsed = time.time() - _phase_start_time
-        kb_append_status(knowledge_path, {
-            "config": f"{target_project}/{target_library}/{target_version}",
-            "status": "ok" if not _stats.get("crashed", 0) else "failed",
-            "elapsed": round(_elapsed, 1),
-        })
+        kb_append_status(knowledge_path, {"config": f"{target_project}/{target_library}/{target_version}", "status": "ok" if not _stats.get("crashed", 0) else "failed", "elapsed": round(_elapsed, 1)})
         kb_report_generate(knowledge_path)

@@ -1,7 +1,8 @@
 import requests
 import json
 import os
-import ast, re
+import ast
+import re
 import platform
 import time
 import uuid
@@ -19,6 +20,7 @@ constraint_path_prefix = ""
 version_path_prefix = ""
 api_path_prefix = ""
 
+
 def setup_path_1(library_path_prefix_pass, constraint_path_prefix_pass, version_path_prefix_pass, api_path_prefix_pass):
     global library_path_prefix, constraint_path_prefix, version_path_prefix, api_path_prefix
     library_path_prefix = library_path_prefix_pass
@@ -26,10 +28,11 @@ def setup_path_1(library_path_prefix_pass, constraint_path_prefix_pass, version_
     version_path_prefix = version_path_prefix_pass
     api_path_prefix = api_path_prefix_pass
 
+
 def split_and_take_first_part(elements):
     # 使用列表推导式处理每个元素
-    #return [element.split(';')[0].strip() for element in elements]
-    res =[]
+    # return [element.split(';')[0].strip() for element in elements]
+    res = []
     for element in elements:
         if ';' in element:
             res.append(element.split(';')[0])
@@ -37,9 +40,11 @@ def split_and_take_first_part(elements):
             res.append(element)
     return res
 
+
 def remove_parentheses_from_end(elements):
     # 使用列表推导式处理每个元素
     return [element.rstrip('()') for element in elements]
+
 
 def download_json(url, filename):
     for retry in range(3):
@@ -64,8 +69,9 @@ def download_json(url, filename):
                 return
         except requests.RequestException:
             if retry < 2:
-                time.sleep(2 ** retry)
+                time.sleep(2**retry)
     logging.error("Failed to download constraint after 3 retries: %s", url)
+
 
 def download_from_data(package, package_version):
     norm_name = norm_pkg(package)
@@ -83,9 +89,10 @@ def download_from_data(package, package_version):
             return
     download_json(url2, path + '/' + norm_name + '.json')
 
+
 def remove_elements_with_extra(lst):
     # 使用列表推导式过滤掉包含'docs'或'tests'的元素
-    #return [item for item in lst if 'extra' not in item]
+    # return [item for item in lst if 'extra' not in item]
     new_requires_dist = []
     for item in lst:
         if 'extra' in item and 'alldeps' in item:
@@ -93,6 +100,7 @@ def remove_elements_with_extra(lst):
         elif 'extra' not in item:
             new_requires_dist.append(item)
     return new_requires_dist
+
 
 def remove_incompat_python_version(requires_dist, python_version):
     """Drop dependencies whose ``python_version`` marker is incompatible.
@@ -138,6 +146,7 @@ def remove_incompat_python_version(requires_dist, python_version):
                 new_requires_dist.append(item)
     return new_requires_dist
 
+
 def filter_extra_markers(requires_dist):
     """Drop dependencies with ``extra`` markers (optional deps pip won't install).
 
@@ -155,7 +164,9 @@ def filter_extra_markers(requires_dist):
         result.append(item)
     return result
 
+
 def get_tree(filename):
+    # 依次尝试 3.8、当前解释器和 3.4 语法，全部失败时沿用返回 None 的约定。
     try:
         tree = get_tree_with_feature_version(filename, feature_version=(3, 8))
         return tree
@@ -170,28 +181,30 @@ def get_tree(filename):
             except:
                 return None
 
+
 def find_setup_path(dir_path):
-        """
+    """
         find setup.py path
         :param dir_path:
         :return: setpy.py path or None
         """
-        setup_path = None
-        for f in os.listdir(dir_path):
-            full_f = os.path.join(dir_path, f)
+    setup_path = None
+    for f in os.listdir(dir_path):
+        full_f = os.path.join(dir_path, f)
+        if full_f.endswith(r"\setup.py") or full_f.endswith(r"/setup.py"):
+            setup_path = full_f
+            break
+
+    if setup_path == None:
+        parent_dir_path = slash.join(dir_path.split(slash)[:-1])
+        for f in os.listdir(parent_dir_path):
+            full_f = os.path.join(parent_dir_path, f)
             if full_f.endswith(r"\setup.py") or full_f.endswith(r"/setup.py"):
                 setup_path = full_f
                 break
 
-        if setup_path == None:
-            parent_dir_path = slash.join(dir_path.split(slash)[:-1])
-            for f in os.listdir(parent_dir_path):
-                full_f = os.path.join(parent_dir_path, f)
-                if full_f.endswith(r"\setup.py") or full_f.endswith(r"/setup.py"):
-                    setup_path = full_f
-                    break
+    return setup_path
 
-        return setup_path
 
 def get_packname_and_cons_from_setup(librarypath):
     setupfilepath = find_setup_path(librarypath)
@@ -200,15 +213,18 @@ def get_packname_and_cons_from_setup(librarypath):
         r_node = get_tree(setupfilepath)
     except SyntaxError:
         return []
-    
+
     if r_node == None:
         return []
 
     install_requires = None
     res = []
     for element in ast.walk(r_node):
-        if type(element) == ast.Call and ((type(element.func) == ast.Name and element.func.id == "setup") or
-                                          ((type(element.func) == ast.Attribute and type(element.func.value)==ast.Name and element.func.value.id == "setuptools" and element.func.attr=="setup"))):
+        if type(element) == ast.Call and (
+            (type(element.func) == ast.Name and element.func.id == "setup") or
+            ((type(element.func) == ast.Attribute and type(element.func.value)
+              == ast.Name and element.func.value.id == "setuptools"
+              and element.func.attr == "setup"))):
             for keyword in element.keywords:
                 if keyword.arg == "install_requires":
                     install_requires = keyword.value
@@ -244,12 +260,10 @@ def get_packname_and_cons_from_setup(librarypath):
             continue
 
         assert type(single_req) in [ast.Str, ast.Constant]
-        if type(single_req)==ast.Str:
+        if type(single_req) == ast.Str:
             res.append(split_packname_and_cons(single_req.s))
         else:
             res.append(split_packname_and_cons(single_req.value))
-
-
 
     return res
 
@@ -279,13 +293,11 @@ def try_read_constraint_json(pkg, version):
                 continue
 
     # Point 34: download from PyPI when not found locally
-    logging.debug("Constraint JSON not found locally, downloading: %s==%s",
-                  pkg, version)
+    logging.debug("Constraint JSON not found locally, downloading: %s==%s", pkg, version)
     try:
         download_from_data(pkg, version)
     except Exception:
-        logging.debug("Failed to download constraint for %s==%s", pkg, version,
-                      exc_info=True)
+        logging.debug("Failed to download constraint for %s==%s", pkg, version, exc_info=True)
         return None, None
 
     # Retry after download
@@ -352,14 +364,11 @@ def get_library_constraint_from_metadata(pkg, version, python_version, filter_ex
                 requires_dist_pattern = r"Requires-Dist: (.+?)(?=\n|$)"
                 requires_dist = re.findall(requires_dist_pattern, metadata)
                 # Detect old-format METADATA that predates Requires-Dist
-                mv_match = re.search(
-                    r"^Metadata-Version:\s*([\d.]+)", metadata,
-                    re.MULTILINE | re.IGNORECASE)
+                mv_match = re.search(r"^Metadata-Version:\s*([\d.]+)", metadata, re.MULTILINE | re.IGNORECASE)
                 if mv_match:
                     try:
                         metadata_is_old = (
-                            tuple(map(int, mv_match.group(1).split(".")))
-                            <= (2, 0)
+                            tuple(map(int, mv_match.group(1).split("."))) <= (2, 0)
                         )
                     except (ValueError, TypeError):
                         pass
@@ -409,8 +418,7 @@ def get_library_constraint_from_metadata(pkg, version, python_version, filter_ex
             requires_dist = egg_requires
         else:
             # Priority 3: PyPI JSON fallback
-            logging.debug("Falling back to PyPI JSON for %s==%s constraints",
-                          pkg, version)
+            logging.debug("Falling back to PyPI JSON for %s==%s constraints", pkg, version)
             data, _ = try_read_constraint_json(pkg, version)
             if data is not None:
                 try:
@@ -428,8 +436,7 @@ def get_library_constraint_from_metadata(pkg, version, python_version, filter_ex
     # Modern METADATA (≥2.1) with empty Requires-Dist IS authoritative.
     if not metadata_found or metadata_is_old:
         if requires_dist is None or len(requires_dist) == 0:
-            logging.debug("No requires_dist in artifact metadata for %s==%s, "
-                           "trying PyPI JSON", pkg, version)
+            logging.debug("No requires_dist in artifact metadata for %s==%s, " "trying PyPI JSON", pkg, version)
             data, _ = try_read_constraint_json(pkg, version)
             if data is not None:
                 try:
@@ -468,7 +475,8 @@ def get_library_constraint_from_metadata(pkg, version, python_version, filter_ex
                 if key not in res:
                     res[key] = None
 
-    return res 
+    return res
+
 
 def get_library_dependency_from_metadata(pkg, version, python_version):
     res = []
@@ -477,33 +485,39 @@ def get_library_dependency_from_metadata(pkg, version, python_version):
     for library in library_constraint:
         res.append(library)
 
-    return res 
+    return res
 
 
 def get_FDG_from_requirements(proj_dependency, python_version):
     res = {}
 
-    #proj_dependency = get_proj_dependency_from_requirements(file_path)
+    # proj_dependency = get_proj_dependency_from_requirements(file_path)
     for library in proj_dependency:
         res[library] = get_library_dependency_from_metadata(library, proj_dependency[library], python_version)
-        #print(res[library])
-        #pass
-    res = {node.lower(): [neighbor.lower() for neighbor in neighbors] for node, neighbors in res.items()}
+        # print(res[library])
+        # pass
+    res = {
+        node.lower(): [neighbor.lower() for neighbor in neighbors]
+        for node, neighbors in res.items()
+    }
     return res
+
 
 def reachable_nodes(graph, start_node):
     visited = {}  # dict preserves DFS insertion order (Python 3.7+)
-    #start_node = start_node.lower
+
+    # start_node = start_node.lower
 
     def dfs(node):
         if node not in visited:
-            #print(node)
+            # print(node)
             visited[node] = True
             for neighbor in graph.get(node, []):
                 dfs(neighbor)
 
     dfs(start_node)
     return visited
+
 
 def build_undirected_graph(graph):
     undirected_graph = {}
@@ -517,11 +531,12 @@ def build_undirected_graph(graph):
             undirected_graph[neighbor].append(node)  # 添加反向边
     return undirected_graph
 
+
 def get_sub_graph(graph, node):
     sub_graph = {}
 
     undirected_graph = build_undirected_graph(graph)
-    #print(graph)
+    # print(graph)
     visited = reachable_nodes(undirected_graph, node)
     for i in visited:
         try:
@@ -529,6 +544,8 @@ def get_sub_graph(graph, node):
         except:
             continue
     return sub_graph
+
+
 '''
 if __name__ == '__main__':
     res = get_library_dependency_from_metadata('tensorflow', '2.6.2')

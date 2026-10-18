@@ -1,16 +1,20 @@
-class ShareData():
+class ShareData:
     name_base_global_search_record = []
 
-class LanguageParams():
+
+class LanguageParams:
     """
     Shallow structure to make storing language-specific parameters cleaner
     """
+
     def __init__(self, source_type='script', ruby_version='27'):
         self.source_type = source_type
         self.ruby_version = ruby_version
 
-class ShareFlag():
+
+class ShareFlag:
     analyzing_from_outside = True
+
 
 def djoin(*tup):
     if len(tup) == 1 and isinstance(tup[0], list):
@@ -20,6 +24,7 @@ def djoin(*tup):
 
 def flatten(list_of_lists):
     return [el for sublist in list_of_lists for el in sublist]
+
 
 class Namespace(dict):
     def __init__(self, *args, **kwargs):

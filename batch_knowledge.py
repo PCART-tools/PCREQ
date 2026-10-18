@@ -16,7 +16,6 @@ import time
 import glob
 from collections import defaultdict
 
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PCREQ_CONFIGURE = os.path.join(SCRIPT_DIR, 'configure')
 LOG_BASE = os.path.join(SCRIPT_DIR, 'batch_logs', 'knowledge')

@@ -2,6 +2,7 @@ import ast
 import os
 from utils.util import get_path_by_extension
 
+
 def extract_imports_from_file(file_path):
     """从给定的 Python 文件中提取 import 信息。"""
     try:
@@ -24,6 +25,7 @@ def extract_imports_from_file(file_path):
                     imports.append(alias.name)
     return list(dict.fromkeys(imports))
 
+
 def infer_directory_structure(imports):
     """根据导入信息推断目录结构。"""
     structure = {}
@@ -33,6 +35,7 @@ def infer_directory_structure(imports):
         for part in parts:
             cursor = cursor.setdefault(part, {})
     return structure
+
 
 def print_directory_structure(structure, prefix=''):
     """将目录结构打印为 'a/b/c' 形式的路径，并返回这些路径的字符串。"""
@@ -48,6 +51,7 @@ def print_directory_structure(structure, prefix=''):
         if value:  # 如果有子目录
             paths.extend(print_directory_structure(value, current_path))
     return paths
+
 
 def paths_of_import_file(file_path):
     imports = extract_imports_from_file(file_path)
@@ -65,5 +69,3 @@ def get_paths_of_import(root_dir):
             if item not in directory_paths:
                 directory_paths.append(item)
     return directory_paths
-
-

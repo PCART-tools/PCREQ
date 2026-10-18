@@ -1,6 +1,7 @@
 import re
 import ast
 
+
 def get_lhs_from_rhs(filename, name):
     # 打开并读取 .py 文件内容
     with open(filename, 'r') as file:
@@ -24,6 +25,7 @@ def get_lhs_from_rhs(filename, name):
                             return target.id
     return None
 
+
 def get_attribute(filename, class_string):
     # 存储结果
     results = []
@@ -36,7 +38,8 @@ def get_attribute(filename, class_string):
     for line in lines:
         # 如果行中包含传入的字符串变量 xxx_string
         if class_string in line:
-            # 使用正则表达式匹配 f'{xxx_string}.y', f'{xxx_string}.y.z' 或 f'{xxx_string}.y.z.m' 等形式，提取第一个 y
+            # 使用正则表达式匹配 f'{xxx_string}.y', f'{xxx_string}.y.z' 或 f'{xxx_string}.y.z.m' 等
+            # 形式，提取第一个 y
             # 使用 re.escape 确保 xxx_string 中包含的特殊字符被正确处理
             pattern = re.escape(class_string) + r'\.(\w+)'
             match = re.search(pattern, line)
@@ -46,13 +49,15 @@ def get_attribute(filename, class_string):
 
     return results
 
+
 def get_attributes_from_file(filename, class_string):
     lhs = get_lhs_from_rhs(filename, class_string)
-    #print(lhs)
+    # print(lhs)
     if lhs is not None:
         class_string = lhs
     attributes = get_attribute(filename, class_string)
     return attributes
+
 
 '''
 # 示例用法

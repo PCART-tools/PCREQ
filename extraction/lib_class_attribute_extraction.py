@@ -1,5 +1,6 @@
 import ast
 
+
 class ClassAttributeExtractor(ast.NodeVisitor):
     def __init__(self):
         self.class_attributes = {}
@@ -28,6 +29,7 @@ class ClassAttributeExtractor(ast.NodeVisitor):
                 self.extract_attributes_from_init(stmt.body, attributes)
                 self.extract_attributes_from_init(stmt.orelse, attributes)
 
+
 def get_class_attributes_from_file(file_path, class_name):
     try:
         res = []
@@ -45,6 +47,7 @@ def get_class_attributes_from_file(file_path, class_name):
         return res
     except:
         return []
+
 
 if __name__ == '__main__':
     file_path = '/home/lei/compatibility_analysis/DC/project/src/lib_extraction/test.py'

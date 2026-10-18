@@ -1,37 +1,41 @@
 import os
 import ast
 
+
 def get_python_modules_and_packages_from_dir(directory, target_library):
     paths = []
     for root, dirs, files in os.walk(directory):
-        #print(f"Scanning: {root}")
+        # print(f"Scanning: {root}")
         # 列出所有 Python 文件（模块）
         for file in files:
             if file.endswith('.py'):
-                #print(f"Module: {os.path.join(root, file)}")
+                # print(f"Module: {os.path.join(root, file)}")
                 file_remove_py = file[:-3]
-                #print(file_remove_py)
+                # print(file_remove_py)
                 paths.append(os.path.join(root, file_remove_py))
-                
-                
+
         # 暂存要在下一轮循环中遍历的目录
         temp_dirs = []
         for dir in dirs:
             subdir_path = os.path.join(root, dir)
             paths.append(subdir_path)
             init_file = os.path.join(root, dir, '__init__.py')
-            #print(dir)
+            # print(dir)
             if os.path.exists(init_file):
                 paths.append(os.path.join(root, dir))
 
     paths_set = set(paths)
     filtered_set = {item for item in paths_set if not item.endswith('__pycache__')}
     prefix_to_remove = directory + '/'
-    #print(prefix_to_remove)
-    res = {path.replace(prefix_to_remove, target_library+'/') for path in filtered_set}
+    # print(prefix_to_remove)
+    res = {
+        path.replace(prefix_to_remove, target_library + '/')
+        for path in filtered_set
+    }
     res = {item.replace('/', '.') for item in res}
 
     return res
+
 
 def extract_imported_names_from_init_py(project_path):
     """
@@ -64,9 +68,9 @@ def extract_imported_names_from_init_py(project_path):
                         for target in node.targets:
                             if isinstance(target, ast.Name) and target.id == '__all__':
                                 if isinstance(node.value, ast.List):
-                                    #return node.value.elts
-                                    #return elt.s for elt in node.value.elts if isinstance(elt, ast.Str)
-                                    #return [elt.s for elt in node.value.elts if isinstance(elt, ast.Str)]
+                                    # return node.value.elts
+                                    # return elt.s for elt in node.value.elts if isinstance(elt, ast.Str)
+                                    # return [elt.s for elt in node.value.elts if isinstance(elt, ast.Str)]
                                     for elt in node.value.elts:
                                         if isinstance(elt, ast.Str):
                                             imported_names.append((relative_path, elt.s))
@@ -85,6 +89,7 @@ def get_python_modules_and_packages_from_init(directory, target_library):
             res.add(target_library + '.' + name)  # 添加目标库的子模块名称
         # print(f"子包路径: {path}，导入名称: {name}")  # 可选：调试信息，输出子包路径和导入名称
     return res  # 返回包含所有模块和包名称的集合
+
 
 '''
 directory = '/dataset/lei/libraries/tensorflow/tensorflow1.10.0'  

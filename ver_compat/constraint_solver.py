@@ -1,12 +1,18 @@
 from z3 import Int, And, Or, simplify, Optimize
 
+
 def build_order_dict(pkg_dict):
     int_dict = {pkg: Int(pkg) for pkg in pkg_dict}
+    # 版本编号沿用输入字典顺序，约束构建和模型还原共享这一编号映射。
     order_dict = {
-        pkg: {ver: idx for idx, ver in enumerate(ver_dict)}
+        pkg: {
+            ver: idx
+            for idx, ver in enumerate(ver_dict)
+        }
         for pkg, ver_dict in pkg_dict.items()
     }
     return int_dict, order_dict
+
 
 def process_dependencies(deps):
     smt_deps = {}
@@ -15,12 +21,13 @@ def process_dependencies(deps):
         smt_deps.setdefault(dep_pkg, []).append(dep_ver)
     return smt_deps
 
+
 def create_dependency_expr(dep_pkg, smt_vers, int_dict, order_dict):
     if dep_pkg not in order_dict:
         return And(True)  # Point 30: dep not in KB, skip silently
     if len(smt_vers) == 1 and smt_vers[0] == 'True':
         return Or(*[int_dict[dep_pkg] == ver_id for ver_id in order_dict[dep_pkg].values()])
-    
+
     expr = Or()
     for smt_ver in smt_vers:
         if smt_ver in ('False', 'True'):
@@ -29,6 +36,7 @@ def create_dependency_expr(dep_pkg, smt_vers, int_dict, order_dict):
         if ver_id is not None:
             expr = Or(expr, int_dict[dep_pkg] == ver_id)
     return simplify(expr)
+
 
 def add_dependency_constraints(solver, pkg_dict, order_dict, int_dict):
     for pkg, ver_dict in pkg_dict.items():
@@ -48,18 +56,16 @@ def add_dependency_constraints(solver, pkg_dict, order_dict, int_dict):
 
         constrain = simplify(Or(*constraints, int_dict[pkg] == len(order_dict[pkg])))
         solver.add(constrain)
-    
+
     return solver
+
 
 def add_install_constraints(solver, constrain_version_dict, order_dict, int_dict):
     for pkg, versions in constrain_version_dict.items():
-        expr = Or(*[
-            simplify(Or(int_dict[pkg] == order_dict[pkg][ver]))
-            for ver in versions
-            if ver in order_dict[pkg]
-        ]) if versions else False
+        expr = Or(*[simplify(Or(int_dict[pkg] == order_dict[pkg][ver])) for ver in versions if ver in order_dict[pkg]]) if versions else False
         solver.add(expr)
     return solver
+
 
 def parse_z3_model(model, int_dict, order_dict):
     pkg_versions = {}
@@ -70,14 +76,18 @@ def parse_z3_model(model, int_dict, order_dict):
             pkg_versions[pkg] = ver
     return pkg_versions
 
+
 def solving_constraints(pkg_dict, install_dict):
     int_dict, order_dict = build_order_dict(pkg_dict)
     solver = Optimize()
     solver = add_dependency_constraints(solver, pkg_dict, order_dict, int_dict)
-    
-    reversed_install_dict = {pkg: list(reversed(versions)) for pkg, versions in install_dict.items()}
+
+    reversed_install_dict = {
+        pkg: list(reversed(versions))
+        for pkg, versions in install_dict.items()
+    }
     solver = add_install_constraints(solver, reversed_install_dict, order_dict, int_dict)
-    
+
     for pkg in int_dict.values():
         solver.maximize(pkg)
 
@@ -87,6 +97,7 @@ def solving_constraints(pkg_dict, install_dict):
         return None
     except:
         return None
+
 
 '''from z3 import Int, And, Or, simplify, Optimize
 def build_order_dict(pkg_dict):
