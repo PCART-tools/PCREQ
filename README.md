@@ -140,5 +140,6 @@ If PCREQ supports your research or development work, please cite the following p
 
 ## License
 
-PCREQ is licensed under the GNU Affero General Public License v3.0. See [LICENSE.txt](./LICENSE.txt) for details.
+PCREQ is licensed under the GNU Affero General Public License v3.0. See [LICENSE.txt](./LICENSE.txt) for details. Portions of the call graph implementation are adapted from code2flow and are under the MIT License; see
+[THIRD_PARTY_NOTICES.md#code2flow](./THIRD_PARTY_NOTICES.md#code2flow).
 

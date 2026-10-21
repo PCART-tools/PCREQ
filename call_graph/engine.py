@@ -1,3 +1,7 @@
+# Portions of this file are adapted from code2flow.
+# Copyright 2021 Scott Rogowski.
+# Licensed under the MIT License; see THIRD_PARTY_NOTICES.md#code2flow.
+
 import argparse
 import collections
 import json
